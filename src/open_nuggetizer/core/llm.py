@@ -14,11 +14,10 @@ class LLMHandler:
     ):
         self.model = model    
         self.current_key_idx = 0
-        self.client = self._initialize_client()
         api_keys = api_keys or get_vllm_api_key()
         self.api_keys = [api_keys] if isinstance(api_keys, str) else api_keys
+        self.client = self._initialize_client()
          
-    # def _initialize_client(self, api_type, api_base, api_version):
     def _initialize_client(self):
         try:    
             return OpenAI(

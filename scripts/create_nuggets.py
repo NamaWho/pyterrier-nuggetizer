@@ -4,8 +4,6 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, List
-import sys
-sys.path.append(str(Path(__file__).resolve().parent.parent))
 from src.open_nuggetizer.core.types import Query, Document, Request
 from src.open_nuggetizer.models.nuggetizer import Nuggetizer
 

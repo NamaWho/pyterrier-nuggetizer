@@ -21,3 +21,10 @@ OpenNuggetizer is an open-source tool designed to assess the factual accuracy of
 **Contributing:**
 
 We welcome contributions from the community to enhance OpenNuggetizer's capabilities. Please refer to our contribution guidelines for more information.
+
+**Getting started**
+"""
+PYTHONPATH=. python3 scripts/create_nuggets.py --inp
+ut_file data/retrieval_results/retrieve_results_fs4_bm25+rocchio_snowael_sno
+waem_gtel+monot5_rrf+rz_rrf.rag24.test_top100.jsonl --output_file data/nuggets/os_nuggets.jsonl --log_level 2
+"""
