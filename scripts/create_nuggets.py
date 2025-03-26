@@ -80,7 +80,7 @@ def main():
     parser = argparse.ArgumentParser(description='Extract and score nuggets from input JSONL file')
     parser.add_argument('--input_file', type=str, required=True, help='Path to input JSONL file')
     parser.add_argument('--output_file', type=str, required=True, help='Path to output JSONL file')
-    parser.add_argument('--model', type=str, default='deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B', help='Model to use for all operations')
+    parser.add_argument('--model', type=str, default='mistralai/Mistral-7B-Instruct-v0.3', help='Model to use for all operations')
     parser.add_argument('--creator_model', type=str, help='Model to use for nugget creation')
     parser.add_argument('--scorer_model', type=str, help='Model to use for nugget scoring')
     parser.add_argument('--window_size', type=int, help='Window size for processing')

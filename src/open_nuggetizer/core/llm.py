@@ -50,7 +50,6 @@ class LLMHandler:
                     encoding = tiktoken.get_encoding("cl100k_base")
                 return response, len(encoding.encode(response))
             except Exception as e:
-                print(f"Error: {str(e)}")
                 self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
                 self.client.api_key = self.api_keys[self.current_key_idx]
                 time.sleep(0.1)

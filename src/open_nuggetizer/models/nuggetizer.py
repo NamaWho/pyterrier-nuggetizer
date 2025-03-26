@@ -14,9 +14,9 @@ class Nuggetizer(BaseNuggetizer):
     
     Args:
         model (Optional[str], optional): The model to use for all components. Defaults to None.
-        creator_model (Optional[str], optional): The model to use for the creator component. Defaults to "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B".
-        scorer_model (Optional[str], optional): The model to use for the scorer component. Defaults to "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B".
-        assigner_model (Optional[str], optional): The model to use for the assigner component. Defaults to "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B".
+        creator_model (Optional[str], optional): The model to use for the creator component.
+        scorer_model (Optional[str], optional): The model to use for the scorer component. 
+        assigner_model (Optional[str], optional): The model to use for the assigner component. 
         api_keys (Optional[str], optional): The API keys to use for all components. Defaults to None.
         creator_mode (NuggetMode, optional): The mode to use for the creator component. Defaults to NuggetMode.ATOMIC.
         scorer_mode (NuggetScoreMode, optional): The mode to use for the scorer component. Defaults to NuggetScoreMode.VITAL_OKAY.
@@ -34,9 +34,9 @@ class Nuggetizer(BaseNuggetizer):
     def __init__(
         self,
         model: Optional[str] = None,
-        creator_model: Optional[str] = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
-        scorer_model: Optional[str] = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
-        assigner_model: Optional[str] = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+        creator_model: Optional[str] = "mistralai/Mistral-7B-Instruct-v0.3",
+        scorer_model: Optional[str] = "mistralai/Mistral-7B-Instruct-v0.3",
+        assigner_model: Optional[str] = "mistralai/Mistral-7B-Instruct-v0.3",
         api_keys: Optional[str] = None,
         creator_mode: NuggetMode = NuggetMode.ATOMIC,
         scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
