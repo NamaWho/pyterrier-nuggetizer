@@ -7,6 +7,7 @@ from src.open_nuggetizer.core.types import (
     Request, Nugget, ScoredNugget, AssignedScoredNugget,
     NuggetMode, NuggetScoreMode, NuggetAssignMode
 )
+from src.open_nuggetizer.core.prompt import render_prompt
 from src.open_nuggetizer.utils.parser import extract_list
 
 class Nuggetizer(BaseNuggetizer):
@@ -89,14 +90,8 @@ class Nuggetizer(BaseNuggetizer):
 
     def _create_nugget_prompt(self, request: Request, start: int, end: int, nuggets: List[str]) -> List[Dict[str, str]]:
         messages = [
-            {
-                "role": "system",
-                "content": "You are NuggetizeLLM, an intelligent assistant that can update a list of atomic nuggets to best provide all the information required for the query."
-            },
-            {
-                "role": "user",
-                "content": self._get_nugget_prompt_content(request, start, end, nuggets)
-            }
+            {"role": "system", "content": "You are NuggetizeLLM, an intelligent assistant that can update a list of atomic nuggets to best provide all the information required for the query."},
+            {"role": "user", "content": self._get_nugget_prompt_content(request, start, end, nuggets)}
         ]
         return messages
 
@@ -106,65 +101,83 @@ class Nuggetizer(BaseNuggetizer):
             for i, doc in enumerate(request.documents[start:end])
         ])
         
-        return f"""Update the list of atomic nuggets of information (1-12 words), if needed, so they best provide the information required for the query. Leverage only the initial list of nuggets (if exists) and the provided context (this is an iterative process).  Return only the final list of all nuggets in a Pythonic list format (even if no updates). Make sure there is no redundant information. Ensure the updated nugget list has at most {self.creator_max_nuggets} nuggets (can be less), keeping only the most vital ones. Order them in decreasing order of importance. Prefer nuggets that provide more interesting information.
+#         return f"""Update the list of atomic nuggets of information (1-12 words), if needed, so they best provide the information required for the query. Leverage only the initial list of nuggets (if exists) and the provided context (this is an iterative process).  Return only the final list of all nuggets in a Pythonic list format (even if no updates). Make sure there is no redundant information. Ensure the updated nugget list has at most {self.creator_max_nuggets} nuggets (can be less), keeping only the most vital ones. Order them in decreasing order of importance. Prefer nuggets that provide more interesting information.
 
-Search Query: {request.query.text}
-Context:
-{context}
-Search Query: {request.query.text}
-Initial Nugget List: {nuggets}
-Initial Nugget List Length: {len(nuggets)}
+# Search Query: {request.query.text}
+# Context:
+# {context}
+# Search Query: {request.query.text}
+# Initial Nugget List: {nuggets}
+# Initial Nugget List Length: {len(nuggets)}
 
-Only update the list of atomic nuggets (if needed, else return as is). Do not explain. Always answer in short nuggets (not questions). List in the form ["a", "b", ...] and a and b are strings with no mention of ".
-Updated Nugget List:"""
+# Only update the list of atomic nuggets (if needed, else return as is). Do not explain. Always answer in short nuggets (not questions). List in the form ["a", "b", ...] and a and b are strings with no mention of ".
+# Updated Nugget List:"""
+        return render_prompt("creator.txt", {
+            "query": request.query.text,
+            "context": context,
+            "nuggets": nuggets,
+            "max_nuggets": self.creator_max_nuggets
+        })
 
     def _create_score_prompt(self, query: str, nuggets: List[Nugget]) -> List[Dict[str, str]]:
+#         messages = [
+#             {
+#                 "role": "system",
+#                 "content": "You are NuggetizeScoreLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."
+#             },
+#             {
+#                 "role": "user",
+#                 "content": f"""Based on the query, label each of the {len(nuggets)} nuggets either a vital or okay based on the following criteria. Vital nuggets represent concepts that must be present in a “good” answer; on the other hand, okay nuggets contribute worthwhile information about the target but are not essential. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget.
+
+# Search Query: {query}
+# Nugget List: {[nugget.text for nugget in nuggets]}
+
+# Only return the list of labels (List[str]). Do not explain.
+# Labels:"""
+#             }
+#         ]
+        nugget_texts = [nugget.text for nugget in nuggets]
+        content = render_prompt("scorer.txt", {
+            "query": query,
+            "nuggets": nugget_texts
+        })
         messages = [
-            {
-                "role": "system",
-                "content": "You are NuggetizeScoreLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."
-            },
-            {
-                "role": "user",
-                "content": f"""Based on the query, label each of the {len(nuggets)} nuggets either a vital or okay based on the following criteria. Vital nuggets represent concepts that must be present in a “good” answer; on the other hand, okay nuggets contribute worthwhile information about the target but are not essential. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget.
-
-Search Query: {query}
-Nugget List: {[nugget.text for nugget in nuggets]}
-
-Only return the list of labels (List[str]). Do not explain.
-Labels:"""
-            }
+            {"role": "system", "content": "You are NuggetizeScoreLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."},
+            {"role": "user", "content": content}
         ]
         return messages
 
     def _create_assign_prompt(self, query: str, context: str, nuggets: List[ScoredNugget]) -> List[Dict[str, str]]:
         messages = [
-            {
-                "role": "system",
-                "content": "You are NuggetizeAssignerLLM, an intelligent assistant that can label a list of atomic nuggets based on if they are captured by a given passage."
-            },
-            {
-                "role": "user",
-                "content": self._get_assign_prompt_content(query, context, nuggets)
-            }
+            {"role": "system", "content": "You are NuggetizeAssignerLLM, an intelligent assistant that can label a list of atomic nuggets based on if they are captured by a given passage."},
+            {"role": "user", "content": self._get_assign_prompt_content(query, context, nuggets)}
         ]
         return messages
 
     def _get_assign_prompt_content(self, query: str, context: str, nuggets: List[ScoredNugget]) -> str:
         nugget_texts = [nugget.text for nugget in nuggets]
         
-        if self.assigner_mode == NuggetAssignMode.SUPPORT_GRADE_2:
-            instruction = f"""Based on the query and passage, label each of the {len(nuggets)} nuggets either as support or not_support using the following criteria. A nugget that is fully captured in the passage should be labeled as support; otherwise, label them as not_support. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget."""
-        else:
-            instruction = f"""Based on the query and passage, label each of the {len(nuggets)} nuggets either as support, partial_support, or not_support using the following criteria. A nugget that is fully captured in the passage should be labeled as support. A nugget that is partially captured in the passage should be labeled as partial_support. If the nugget is not captured at all, label it as not_support. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget."""
-            
-        return f"""{instruction}
+        template_name = "assigner_grade_2.txt" if self.assigner_mode == NuggetAssignMode.SUPPORT_GRADE_2 else "assigner_grade_3.txt"
+        content = render_prompt(template_name, {
+            "query": query,
+            "context": context,
+            "nuggets": nugget_texts
+        })
+        return content
 
-Search Query: {query}
-Passage: {context}
-Nugget List: {nugget_texts}
-Only return the list of labels (List[str]). Do not explain.
-Labels:"""
+
+#         if self.assigner_mode == NuggetAssignMode.SUPPORT_GRADE_2:
+#             instruction = f"""Based on the query and passage, label each of the {len(nuggets)} nuggets either as support or not_support using the following criteria. A nugget that is fully captured in the passage should be labeled as support; otherwise, label them as not_support. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget."""
+#         else:
+#             instruction = f"""Based on the query and passage, label each of the {len(nuggets)} nuggets either as support, partial_support, or not_support using the following criteria. A nugget that is fully captured in the passage should be labeled as support. A nugget that is partially captured in the passage should be labeled as partial_support. If the nugget is not captured at all, label it as not_support. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget."""
+            
+#         return f"""{instruction}
+
+# Search Query: {query}
+# Passage: {context}
+# Nugget List: {nugget_texts}
+# Only return the list of labels (List[str]). Do not explain.
+# Labels:"""
 
     def create(self, request: Request) -> List[ScoredNugget]:
         """
