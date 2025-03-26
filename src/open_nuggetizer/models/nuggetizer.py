@@ -1,12 +1,13 @@
 import ast
 import logging
 from typing import List, Dict, Optional
-from ..core.base import BaseNuggetizer
-from ..core.llm import LLMHandler
-from ..core.types import (
+from src.open_nuggetizer.core.base import BaseNuggetizer
+from src.open_nuggetizer.core.llm import LLMHandler
+from src.open_nuggetizer.core.types import (
     Request, Nugget, ScoredNugget, AssignedScoredNugget,
     NuggetMode, NuggetScoreMode, NuggetAssignMode
 )
+from src.open_nuggetizer.utils.parser import extract_list
 
 class Nuggetizer(BaseNuggetizer):
     """
@@ -203,8 +204,9 @@ Labels:"""
 
                     if self.log_level >= 2:
                         self.logger.info(f"Raw LLM response:\n{response}")
-                    response = response.replace("```python", "").replace("```", "").strip()
-                    nugget_texts = ast.literal_eval(response)
+                    # response = response.replace("```python", "").replace("```", "").strip()
+                    # nugget_texts = ast.literal_eval(response)
+                    nugget_texts = extract_list(response)
                     current_nuggets = nugget_texts[:self.creator_max_nuggets]  # Ensure max nuggets
                     if self.log_level >= 1:
                         self.logger.info(f"Successfully processed window, current nugget count: {len(current_nuggets)}")
@@ -235,9 +237,10 @@ Labels:"""
             while trial_count > 0:
                 try:
                     response, _ = self.scorer_llm.run(prompt, temperature=temperature)
-                    response = response.replace("```python", "").replace("```", "").strip()
-                    importance_labels = ast.literal_eval(response)
-                
+                    # response = response.replace("```python", "").replace("```", "").strip()
+                    # importance_labels = ast.literal_eval(response)
+                    importance_labels = extract_list(response)
+                    
                     for nugget, importance in zip(window_nuggets, importance_labels):
                         scored_nuggets.append(
                             ScoredNugget(text=nugget.text, importance=importance.lower())

@@ -2,7 +2,7 @@ import os
 import time
 from typing import Dict, List, Optional, Union, Tuple
 import tiktoken
-from ..utils.api import get_vllm_api_key
+from src.open_nuggetizer.utils.api import get_vllm_api_key
 from openai import OpenAI
 from vllm import LLM 
 
