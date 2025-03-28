@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, Union, Tuple
 import tiktoken
 from vllm import LLM, SamplingParams
 
+_LLM_MODELS = {}
+
 class VLLMHandler:
     def __init__(
         self,
@@ -16,17 +18,21 @@ class VLLMHandler:
         self.dtype = dtype
         self.gpu_memory_utilization = gpu_memory_utilization
         self.max_tokens = max_tokens   
-        self.llm = self._initialize_llm()
+        self._initialize_llm()
          
     def _initialize_llm(self):
+        if self.model in _LLM_MODELS:
+            self.llm = _LLM_MODELS[self.model]
+            return
+        
         try:    
             self.llm = LLM(
                 model=self.model,
                 tokenizer=self.model,
                 dtype=self.dtype,
                 gpu_memory_utilization=self.gpu_memory_utilization,
-                max_tokens=self.max_tokens
             )
+            _LLM_MODELS[self.model] = self.llm
         except Exception as e:
             raise Exception(f"Error initializing llm: {str(e)}")
 
