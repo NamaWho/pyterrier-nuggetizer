@@ -203,7 +203,10 @@ class VLLMNuggetizer(BaseNuggetizer):
                     current_nuggets.extend(nugget_texts[:self.creator_max_nuggets])  # Ensure max nuggets
 
                 # Reranking stage
+                if self.log_level >= 1:
+                    self.logger.info("Attempting to rerank nuggets")
                 all_nuggets = list(set(current_nuggets))    # Remove duplicates
+                all_nuggets = [Nugget(text=text) for text in all_nuggets]
                 reranked_nuggets = self._hierarchical_rerank(request.query.text, all_nuggets, self.scorer_max_nuggets)
 
                 if self.log_level >= 1:
