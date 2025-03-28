@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List
 from src.open_nuggetizer.core.types import Query, Document, Request
 from src.open_nuggetizer.models.nuggetizer import Nuggetizer
+from src.open_nuggetizer.models.vllm_nuggetizer import VLLMNuggetizer
 
 def setup_logging(log_level: int) -> None:
     """Configure logging based on verbosity level."""
@@ -116,7 +117,8 @@ def main():
     if args.max_nuggets:
         nuggetizer_kwargs['max_nuggets'] = args.max_nuggets
         
-    nuggetizer = Nuggetizer(**nuggetizer_kwargs)
+    # nuggetizer = Nuggetizer(**nuggetizer_kwargs)
+    nuggetizer = VLLMNuggetizer(**nuggetizer_kwargs)
     
     # Process each record
     logger.info("Reading input file: %s", args.input_file)

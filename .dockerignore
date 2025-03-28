@@ -16,3 +16,4 @@ __pycache__/
 .git/
 outputs/
 data/
+.todo
