@@ -1,0 +1,18 @@
+Below is a list of candidate nuggets extracted from different portions of context. Some may be redundant, overlapping, or less informative.
+
+Your task is to:
+- Select at most {{ max_nuggets }} nuggets
+- Prefer nuggets that are highly relevant to the query
+- Avoid redundancy by merging or condensing overlapping nuggets into a single clearer one
+- Ensure the final list covers different aspects of the query
+- Return the nuggets as a Pythonic list of strings, ordered by relevance (most important first)
+- Do NOT add any explanations or extra text
+
+Search Query:
+{{ query }}
+
+Candidate Nuggets:
+{{ nuggets }}
+
+Only answer with the list of atomic nuggets. Do not explain. List in the form ["a", "b", ...] and a and b are strings with no mention of ".
+Nuggets List:

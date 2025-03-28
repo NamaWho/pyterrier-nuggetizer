@@ -54,7 +54,7 @@ class Request:
 
 @dataclass
 class Nugget:
-    """"
+    """
     Represents a nugget.
 
     Attributes:

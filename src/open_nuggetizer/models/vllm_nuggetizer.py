@@ -84,6 +84,16 @@ class VLLMNuggetizer(BaseNuggetizer):
             "nuggets": nuggets,
             "max_nuggets": self.creator_max_nuggets
         })
+    
+    def _create_rerank_prompt(self, query: str, nuggets: List[Nugget]) -> str:
+        system_message = "You are NuggetRerankerLLM, a helpful assistant that selects the most important atomic nuggets of information (each 1–12 words) for answering a given search query."
+        nugget_texts = [nugget.text for nugget in nuggets]
+        user_message = render_prompt("reranker.txt", {
+            "query": query, 
+            "nuggets": nugget_texts,
+            "max_nuggets": self.creator_max_nuggets
+        })
+        return f"{system_message}\n\n{user_message}"
 
     def _create_score_prompt(self, query: str, nuggets: List[Nugget]) -> str:
         nugget_texts = [nugget.text for nugget in nuggets]
@@ -152,33 +162,6 @@ class VLLMNuggetizer(BaseNuggetizer):
             start += self.creator_window_size
             if self.log_level >= 1:
                 self.logger.info(f"Moving window by stride {self.creator_window_size}, new start: {start}")
-            
-            # temperature = 0.0
-            # trial_count = 500
-            # while trial_count > 0:
-            #     try:
-            #         if self.log_level >= 1:
-            #             self.logger.info(f"Attempting LLM call (trial {500-trial_count+1})")
-            #         response, _ = self.creator_llm.run(prompt, temperature=temperature)
-
-            #         if self.log_level >= 2:
-            #             self.logger.info(f"Raw LLM response:\n{response}")
-
-            #         nugget_texts = extract_list(response)
-            #         current_nuggets = nugget_texts[:self.creator_max_nuggets]  # Ensure max nuggets
-            #         if self.log_level >= 1:
-            #             self.logger.info(f"Successfully processed window, current nugget count: {len(current_nuggets)}")
-            #         break
-            #     except Exception as e:
-            #         self.logger.warning(f"Failed to parse response: {str(e)}")
-            #         temperature = 0.2
-            #         trial_count -= 1
-            #         if trial_count == 0:
-            #             self.logger.error("Failed to parse response after 500 attempts")
-            
-            # start += self.creator_window_size
-            # if self.log_level >= 1:
-            #     self.logger.info(f"Moving window by stride {self.creator_window_size}, new start: {start}")
         
         # Process all prompts in a batch
         trial_count = 500
@@ -187,15 +170,29 @@ class VLLMNuggetizer(BaseNuggetizer):
             try:
                 if self.log_level >= 1:
                     self.logger.info(f"Attempting batch LLM call (trial {500-trial_count+1})")
-                responses, _ = self.creator_llm.run_batch(prompts, temperature=temperature)
+                responses = self.creator_llm.run_batch(prompts, temperature=temperature)
                 
-                for i, response in enumerate(responses):
+                for i, (response, _) in enumerate(responses):
                     if self.log_level >= 2:
                         self.logger.info(f"Raw LLM response for window {windows[i]}:\n{response}")
                     
                     nugget_texts = extract_list(response)
                     current_nuggets.extend(nugget_texts[:self.creator_max_nuggets])  # Ensure max nuggets
+
+                # Reranking stage
+                all_nuggets = list(set(current_nuggets))    # Remove duplicates
+                all_nuggets = [Nugget(text=text) for text in all_nuggets]
+                rerank_prompt = self._create_rerank_prompt(request.query.text, all_nuggets)
+                rerank_response = self.creator_llm.run_batch(
+                    [rerank_prompt], temperature=temperature
+                )[0][0]
+
+                if self.log_level >= 2:
+                    self.logger.info(f"Raw LLM response for reranking:\n{rerank_response}")
+                
+                reranked_nuggets = extract_list(rerank_response)
                 break
+
             except Exception as e:
                 # If we fail to parse the response, we can still return the nuggets we have so far
                 # and mark the failed ones
@@ -210,41 +207,8 @@ class VLLMNuggetizer(BaseNuggetizer):
                         for _ in range(self.creator_window_size)
                     ])
 
-        # # Score the nuggets
-        # nuggets = [Nugget(text=text) for text in current_nuggets]
-        # scored_nuggets = []
-        # start = 0
-        
-        # while start < len(nuggets):
-        #     end = min(start + self.scorer_window_size, len(nuggets))
-        #     window_nuggets = nuggets[start:end]
-            
-        #     prompt = self._create_score_prompt(request.query.text, window_nuggets)
-        #     trial_count = 500
-        #     temperature = 0.0
-        #     while trial_count > 0:
-        #         try:
-        #             response, _ = self.scorer_llm.run(prompt, temperature=temperature)
-        #             importance_labels = extract_list(response)
-                    
-        #             for nugget, importance in zip(window_nuggets, importance_labels):
-        #                 scored_nuggets.append(
-        #                     ScoredNugget(text=nugget.text, importance=importance.lower())
-        #                 )
-        #             break
-        #         except Exception as e:
-        #             trial_count -= 1
-        #             temperature = 0.2
-        #             if trial_count == 0:
-        #                 scored_nuggets.extend([
-        #                     ScoredNugget(text=nugget.text, importance="failed")
-        #                     for nugget in window_nuggets
-        #                 ])
-            
-        #     start += self.scorer_window_size
-
         # Score the nuggets using batch processing
-        nuggets = [Nugget(text=text) for text in current_nuggets]
+        nuggets = [Nugget(text=text) for text in reranked_nuggets]
         scored_nuggets = []
 
         trial_count = 500
@@ -253,13 +217,13 @@ class VLLMNuggetizer(BaseNuggetizer):
             try:
                 if self.log_level >= 1:
                     self.logger.info(f"Attempting batch LLM call for scoring (trial {500-trial_count+1})")
-                responses, _ = self.scorer_llm.run_batch(
+                responses = self.scorer_llm.run_batch(
                     [self._create_score_prompt(request.query.text, nuggets)],
                     temperature=temperature
                 )
                 if self.log_level >= 2:
-                    self.logger.info(f"Raw LLM response for scoring:\n{responses[0]}")
-                importance_labels = extract_list(responses[0])
+                    self.logger.info(f"Raw LLM response for scoring:\n{responses[0][0]}")
+                importance_labels = extract_list(responses[0][0])
                 for nugget, importance in zip(nuggets, importance_labels):
                     scored_nuggets.append(
                         ScoredNugget(text=nugget.text, importance=importance.lower())
