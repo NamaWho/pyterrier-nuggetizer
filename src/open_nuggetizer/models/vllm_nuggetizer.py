@@ -66,12 +66,11 @@ class VLLMNuggetizer(BaseNuggetizer):
         if self.log_level >= 1:
             self.logger.info(f"Initialized Nuggetizer with models: {creator_model}, {scorer_model}, {assigner_model}")
 
-    def _create_nugget_prompt(self, request: Request, start: int, end: int, nuggets: List[str]) -> List[Dict[str, str]]:
-        messages = [
-            {"role": "system", "content": "You are NuggetizeLLM, an intelligent assistant that can update a list of atomic nuggets to best provide all the information required for the query."},
-            {"role": "user", "content": self._get_nugget_prompt_content(request, start, end, nuggets)}
-        ]
-        return messages
+    def _create_nugget_prompt(self, request: Request, start: int, end: int, nuggets: List[str]) -> str:
+        system_message = "You are NuggetizeLLM, an intelligent assistant that can update a list of atomic nuggets to best provide all the information required for the query."
+        user_message = self._get_nugget_prompt_content(request, start, end, nuggets)
+
+        return f"{system_message}\n\n{user_message}"
 
     def _get_nugget_prompt_content(self, request: Request, start: int, end: int, nuggets: List[str]) -> str:
         context = "\n".join([
@@ -86,17 +85,16 @@ class VLLMNuggetizer(BaseNuggetizer):
             "max_nuggets": self.creator_max_nuggets
         })
 
-    def _create_score_prompt(self, query: str, nuggets: List[Nugget]) -> List[Dict[str, str]]:
+    def _create_score_prompt(self, query: str, nuggets: List[Nugget]) -> str:
         nugget_texts = [nugget.text for nugget in nuggets]
         content = render_prompt("scorer.txt", {
             "query": query,
             "nuggets": nugget_texts
         })
-        messages = [
-            {"role": "system", "content": "You are NuggetizeScoreLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."},
-            {"role": "user", "content": content}
-        ]
-        return messages
+
+        system_message = "You are NuggetizeScorerLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."
+        user_message = content
+        return f"{system_message}\n\n{user_message}"
 
     def _create_assign_prompt(self, query: str, context: str, nuggets: List[ScoredNugget]) -> List[Dict[str, str]]:
         messages = [

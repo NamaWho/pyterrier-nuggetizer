@@ -38,7 +38,7 @@ class VLLMHandler:
 
     def run_batch(
         self, 
-        messages: List[Dict[str, str]], 
+        prompts: List[str],
         temperature: float = 0,
         top_p: float = 0.95
     ) -> List[Tuple[str, int]]:
@@ -50,7 +50,7 @@ class VLLMHandler:
         )
 
         results = self.llm.generate(
-            messages=messages,
+            prompts=prompts,
             sampling_params=sampling_params
         )
 
