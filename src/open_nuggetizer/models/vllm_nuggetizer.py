@@ -151,6 +151,10 @@ class VLLMNuggetizer(BaseNuggetizer):
             if self.log_level >= 2:
                 self.logger.info(f"Generated prompt:\n{prompt}")
             
+            start += self.creator_window_size
+            if self.log_level >= 1:
+                self.logger.info(f"Moving window by stride {self.creator_window_size}, new start: {start}")
+            
             # temperature = 0.0
             # trial_count = 500
             # while trial_count > 0:
