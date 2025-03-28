@@ -123,6 +123,29 @@ class VLLMNuggetizer(BaseNuggetizer):
             "nuggets": nugget_texts
         })
         return content
+    
+    def _hierarchical_rerank(self, query, nuggets: List[Nugget], max_nuggets: int, chunk_size: int = 60) -> List[Nugget]:
+        
+        if len(nuggets) <= chunk_size:
+            prompt = self._create_rerank_prompt(query, nuggets)
+            response = self.creator_llm.run_batch(
+                [prompt], temperature=0.0
+            )[0][0]
+            nugget_texts = extract_list(response)[:max_nuggets]
+            return [Nugget(text=text) for text in nugget_texts]
+        
+        # Split nuggets into chunks
+        chunks = [nuggets[i:i + chunk_size] for i in range(0, len(nuggets), chunk_size)]
+        intermediate = []
+
+        batch_prompts = [self._create_rerank_prompt(query, chunk) for chunk in chunks]
+        responses = self.creator_llm.run_batch(batch_prompts)
+        for response, _ in responses:
+            nugget_texts = extract_list(response)[:max_nuggets]
+            intermediate.extend([Nugget(text=text) for text in nugget_texts])
+
+        # Recursively rerank the combined nuggets
+        return self._hierarchical_rerank(query, intermediate, max_nuggets, chunk_size)
 
     def create(self, request: Request) -> List[ScoredNugget]:
         """
@@ -181,16 +204,11 @@ class VLLMNuggetizer(BaseNuggetizer):
 
                 # Reranking stage
                 all_nuggets = list(set(current_nuggets))    # Remove duplicates
-                all_nuggets = [Nugget(text=text) for text in all_nuggets]
-                rerank_prompt = self._create_rerank_prompt(request.query.text, all_nuggets)
-                rerank_response = self.creator_llm.run_batch(
-                    [rerank_prompt], temperature=temperature
-                )[0][0]
+                reranked_nuggets = self._hierarchical_rerank(request.query.text, all_nuggets, self.scorer_max_nuggets)
 
-                if self.log_level >= 2:
-                    self.logger.info(f"Raw LLM response for reranking:\n{rerank_response}")
+                if self.log_level >= 1:
+                    self.logger.info(f"Reranked nuggets: {reranked_nuggets}")
                 
-                reranked_nuggets = extract_list(rerank_response)
                 break
 
             except Exception as e:
@@ -208,7 +226,7 @@ class VLLMNuggetizer(BaseNuggetizer):
                     ])
 
         # Score the nuggets using batch processing
-        nuggets = [Nugget(text=text) for text in reranked_nuggets]
+        nuggets = reranked_nuggets
         scored_nuggets = []
 
         trial_count = 500
