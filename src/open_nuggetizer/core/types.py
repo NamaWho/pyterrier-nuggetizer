@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
+from pydantic import BaseModel
 
 class NuggetMode(Enum):
     ATOMIC = "atomic"
@@ -96,3 +97,12 @@ class AssignedScoredNugget(ScoredNugget):
     - assignment: Assignment of the nugget ("support", "not_support", or "partial_support")
     """
     assignment: str  
+
+class Response(BaseModel):
+    """
+    Represents a response, containing a list of strings.
+    
+    Attributes:
+    - items: List of strings
+    """
+    items: List[str]

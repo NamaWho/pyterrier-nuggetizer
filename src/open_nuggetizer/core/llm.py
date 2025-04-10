@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Union, Tuple
 import tiktoken
 from src.open_nuggetizer.utils.api import get_vllm_api_key
 from openai import OpenAI
-from vllm import LLM 
+from open_nuggetizer.core.hf_llm import LLM 
 
 class LLMHandler:
     def __init__(

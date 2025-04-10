@@ -13,7 +13,6 @@ def load_template(name: str) -> Template:
     except FileNotFoundError:
         raise FileNotFoundError(f"Prompt template '{name}' not found in /prompts")
     
-    
 def render_prompt(template_name: str, context: Dict[str, Any]) -> str:
     """
     Render a Jinja2 template with the given context dictionary.

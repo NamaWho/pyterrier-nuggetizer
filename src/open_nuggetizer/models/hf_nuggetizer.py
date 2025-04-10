@@ -2,15 +2,15 @@ import ast
 import logging
 from typing import List, Dict, Optional
 from src.open_nuggetizer.core.base import BaseNuggetizer
-from src.open_nuggetizer.core.vllm import VLLMHandler
+from src.open_nuggetizer.core.hf_llm import HFHandler
 from src.open_nuggetizer.core.types import (
     Request, Nugget, ScoredNugget, AssignedScoredNugget,
-    NuggetMode, NuggetScoreMode, NuggetAssignMode
+    NuggetMode, NuggetScoreMode, NuggetAssignMode, Response
 )
 from src.open_nuggetizer.core.prompt import render_prompt
 from src.open_nuggetizer.utils.parser import extract_list
 
-class VLLMNuggetizer(BaseNuggetizer):
+class HFNuggetizer(BaseNuggetizer):
     
     def __init__(
         self,
@@ -49,9 +49,9 @@ class VLLMNuggetizer(BaseNuggetizer):
             scorer_model = model
             assigner_model = model
 
-        self.creator_llm = VLLMHandler(creator_model, **llm_kwargs)
-        self.scorer_llm = VLLMHandler(scorer_model, **llm_kwargs)
-        self.assigner_llm = VLLMHandler(assigner_model, **llm_kwargs)
+        self.creator_llm = HFHandler(creator_model, **llm_kwargs)
+        self.scorer_llm = HFHandler(scorer_model, **llm_kwargs)
+        self.assigner_llm = HFHandler(assigner_model, **llm_kwargs)
 
         if max_nuggets is not None:
             self.creator_max_nuggets = max_nuggets
@@ -85,15 +85,15 @@ class VLLMNuggetizer(BaseNuggetizer):
             "max_nuggets": self.creator_max_nuggets
         })
     
-    def _create_rerank_prompt(self, query: str, nuggets: List[Nugget]) -> str:
-        system_message = "You are NuggetRerankerLLM, a helpful assistant that selects the most important atomic nuggets of information (each 1–12 words) for answering a given search query."
-        nugget_texts = [nugget.text for nugget in nuggets]
-        user_message = render_prompt("reranker.txt", {
-            "query": query, 
-            "nuggets": nugget_texts,
-            "max_nuggets": self.creator_max_nuggets
-        })
-        return f"{system_message}\n\n{user_message}"
+    # def _create_rerank_prompt(self, query: str, nuggets: List[Nugget]) -> str:
+    #     system_message = "You are NuggetRerankerLLM, a helpful assistant that selects the most important atomic nuggets of information (each 1–12 words) for answering a given search query."
+    #     nugget_texts = [nugget.text for nugget in nuggets]
+    #     user_message = render_prompt("reranker.txt", {
+    #         "query": query, 
+    #         "nuggets": nugget_texts,
+    #         "max_nuggets": self.creator_max_nuggets
+    #     })
+    #     return f"{system_message}\n\n{user_message}"
 
     def _create_score_prompt(self, query: str, nuggets: List[Nugget]) -> str:
         nugget_texts = [nugget.text for nugget in nuggets]
@@ -124,46 +124,36 @@ class VLLMNuggetizer(BaseNuggetizer):
         })
         return content
     
-    def _hierarchical_rerank(self, query, nuggets: List[Nugget], max_nuggets: int, chunk_size: int = 60) -> List[Nugget]:
+    # def _hierarchical_rerank(self, query, nuggets: List[Nugget], max_nuggets: int, chunk_size: int = 60) -> List[Nugget]:
         
-        if len(nuggets) <= chunk_size:
-            prompt = self._create_rerank_prompt(query, nuggets)
-            response = self.creator_llm.run_batch(
-                [prompt], temperature=0.0
-            )[0][0]
-            nugget_texts = extract_list(response)[:max_nuggets]
-            return [Nugget(text=text) for text in nugget_texts]
+    #     if len(nuggets) <= chunk_size:
+    #         prompt = self._create_rerank_prompt(query, nuggets)
+    #         response = self.creator_llm.run_batch(
+    #             [prompt], temperature=0.0
+    #         )[0][0]
+    #         nugget_texts = extract_list(response)[:max_nuggets]
+    #         return [Nugget(text=text) for text in nugget_texts]
         
-        # Split nuggets into chunks
-        chunks = [nuggets[i:i + chunk_size] for i in range(0, len(nuggets), chunk_size)]
-        intermediate = []
+    #     # Split nuggets into chunks
+    #     chunks = [nuggets[i:i + chunk_size] for i in range(0, len(nuggets), chunk_size)]
+    #     intermediate = []
 
-        batch_prompts = [self._create_rerank_prompt(query, chunk) for chunk in chunks]
-        responses = self.creator_llm.run_batch(batch_prompts)
-        for response, _ in responses:
-            nugget_texts = extract_list(response)[:max_nuggets]
-            intermediate.extend([Nugget(text=text) for text in nugget_texts])
+    #     batch_prompts = [self._create_rerank_prompt(query, chunk) for chunk in chunks]
+    #     responses = self.creator_llm.run_batch(batch_prompts)
+    #     for response, _ in responses:
+    #         nugget_texts = extract_list(response)[:max_nuggets]
+    #         intermediate.extend([Nugget(text=text) for text in nugget_texts])
 
-        # Recursively rerank the combined nuggets
-        return self._hierarchical_rerank(query, intermediate, max_nuggets, chunk_size)
+    #     # Recursively rerank the combined nuggets
+    #     return self._hierarchical_rerank(query, intermediate, max_nuggets, chunk_size)
 
     def create(self, request: Request) -> List[ScoredNugget]:
-        """
-        Create nuggets for a given request.
-
-        Args:
-            request (Request): Input request object containing query and documents.
-
-        Returns:
-            List[ScoredNugget]: List of scored nuggets.
-        """
-        
         if self.log_level >= 1:
             self.logger.info("Starting nugget creation process")
             self.logger.info(f"Processing request with {len(request.documents)} documents")
         
-        windows = []
-        prompts = []
+        # windows = []
+        # prompts = []
 
         start = 0
         current_nuggets: List[str] = []
@@ -177,89 +167,79 @@ class VLLMNuggetizer(BaseNuggetizer):
                 self.logger.info(f"Processing window {start} to {end} of {len(request.documents)} documents")
             
             prompt = self._create_nugget_prompt(request, start, end, current_nuggets)
-            prompts.append(prompt)
-            windows.append((start, end))
-            if self.log_level >= 2:
-                self.logger.info(f"Generated prompt:\n{prompt}")
-            
+             
+            trial_count = 500
+            temperature = 0.0
+            while trial_count > 0:
+                try:
+                    if self.log_level >= 1:
+                        self.logger.info(f"Attempting batch LLM call (trial {500-trial_count+1})")
+                    response = self.creator_llm.run(prompt, temperature=temperature)
+                    
+                    if self.log_level >= 2:
+                        self.logger.info(f"Raw LLM response:\n{response}")
+                    
+                    nugget_texts = response.items
+                    current_nuggets = nugget_texts[:self.creator_max_nuggets]  # Ensure max nuggets
+                    
+                    if self.log_level >= 1:
+                        self.logger.info(f"Successfully processed window with {len(current_nuggets)} nuggets")
+                    break
+
+                except Exception as e:
+                    self.logger.warning(f"Failed to parse response: {str(e)}")
+                    temperature = 0.2
+                    trial_count -= 1
+                    if trial_count == 0:
+                        self.logger.error("Failed to parse response after 500 attempts")
+                        current_nuggets = [
+                            "failed" * self.creator_max_nuggets
+                        ]
+
             start += self.creator_window_size
             if self.log_level >= 1:
-                self.logger.info(f"Moving window by stride {self.creator_window_size}, new start: {start}")
-        
-        # Process all prompts in a batch
-        trial_count = 500
-        temperature = 0.0
-        while trial_count > 0:
-            try:
-                if self.log_level >= 1:
-                    self.logger.info(f"Attempting batch LLM call (trial {500-trial_count+1})")
-                responses = self.creator_llm.run_batch(prompts, temperature=temperature)
-                
-                for i, (response, _) in enumerate(responses):
-                    if self.log_level >= 2:
-                        self.logger.info(f"Raw LLM response for window {windows[i]}:\n{response}")
-                    
-                    nugget_texts = extract_list(response)
-                    current_nuggets.extend(nugget_texts[:self.creator_max_nuggets])  # Ensure max nuggets
+                self.logger.info(f"Moving window by stride of {self.creator_window_size} to {start}")
 
-                # Reranking stage
-                if self.log_level >= 1:
-                    self.logger.info("Attempting to rerank nuggets")
-                all_nuggets = list(set(current_nuggets))    # Remove duplicates
-                all_nuggets = [Nugget(text=text) for text in all_nuggets]
-                reranked_nuggets = self._hierarchical_rerank(request.query.text, all_nuggets, self.scorer_max_nuggets)
-
-                if self.log_level >= 1:
-                    self.logger.info(f"Reranked nuggets: {reranked_nuggets}")
-                
-                break
-
-            except Exception as e:
-                # If we fail to parse the response, we can still return the nuggets we have so far
-                # and mark the failed ones
-                # as "failed"
-                self.logger.warning(f"Failed to parse response: {str(e)}")
-                temperature = 0.2
-                trial_count -= 1
-                if trial_count == 0:
-                    self.logger.error("Failed to parse response after 500 attempts")
-                    current_nuggets.extend([
-                        "failed"
-                        for _ in range(self.creator_window_size)
-                    ])
-
-        # Score the nuggets using batch processing
-        nuggets = reranked_nuggets
+        # Score the nuggets
         scored_nuggets = []
+        nuggets = [Nugget(text=text) for text in current_nuggets]
+        start = 0
 
-        trial_count = 500
-        temperature = 0.0
-        while trial_count > 0:
-            try:
-                if self.log_level >= 1:
-                    self.logger.info(f"Attempting batch LLM call for scoring (trial {500-trial_count+1})")
-                responses = self.scorer_llm.run_batch(
-                    [self._create_score_prompt(request.query.text, nuggets)],
-                    temperature=temperature
-                )
-                if self.log_level >= 2:
-                    self.logger.info(f"Raw LLM response for scoring:\n{responses[0][0]}")
-                importance_labels = extract_list(responses[0][0])
-                for nugget, importance in zip(nuggets, importance_labels):
-                    scored_nuggets.append(
-                        ScoredNugget(text=nugget.text, importance=importance.lower())
+        while start < len(nuggets):
+            end = min(start + self.scorer_window_size, len(nuggets))
+            window_nuggets = nuggets[start:end]
+            
+            prompt = self._create_score_prompt(request.query.text, window_nuggets)
+
+
+            trial_count = 500
+            temperature = 0.0
+            while trial_count > 0:
+                try: 
+                    response = self.scorer_llm.run(
+                        prompt,
+                        temperature=temperature
                     )
-                break
-            except Exception as e:
-                self.logger.warning(f"Failed to parse response: {str(e)}")
-                temperature = 0.2
-                trial_count -= 1
-                if trial_count == 0:
-                    self.logger.error("Failed to parse response after 500 attempts")
-                    scored_nuggets.extend([
-                        ScoredNugget(text=nugget.text, importance="failed")
-                        for nugget in nuggets
-                    ])
+                    # importance_labels = extract_list(responses[0][0])
+                    importance_labels = response.items
+                    
+                    for nugget, importance in zip(window_nuggets, importance_labels):
+                        scored_nuggets.append(
+                            ScoredNugget(text=nugget.text, importance=importance.lower())
+                        )
+                    break
+                except Exception as e:
+                    self.logger.warning(f"Failed to parse response: {str(e)}")
+                    temperature = 0.2
+                    trial_count -= 1
+                    if trial_count == 0:
+                        self.logger.error("Failed to parse response after 500 attempts")
+                        scored_nuggets.extend([
+                            ScoredNugget(text=nugget.text, importance="failed")
+                            for nugget in window_nuggets
+                        ])
+            start += self.scorer_window_size
+
 
         # First sort by importance then position and then take :self.scorer_max_nuggets
         scored_nuggets = sorted(scored_nuggets, 

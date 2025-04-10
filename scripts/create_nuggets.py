@@ -5,8 +5,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List
 from src.open_nuggetizer.core.types import Query, Document, Request
-from src.open_nuggetizer.models.nuggetizer import Nuggetizer
-from src.open_nuggetizer.models.vllm_nuggetizer import VLLMNuggetizer
+from src.open_nuggetizer.models.hf_nuggetizer import HFNuggetizer
 
 def setup_logging(log_level: int) -> None:
     """Configure logging based on verbosity level."""
@@ -81,7 +80,7 @@ def main():
     parser = argparse.ArgumentParser(description='Extract and score nuggets from input JSONL file')
     parser.add_argument('--input_file', type=str, required=True, help='Path to input JSONL file')
     parser.add_argument('--output_file', type=str, required=True, help='Path to output JSONL file')
-    parser.add_argument('--model', type=str, default='mistralai/Mistral-7B-Instruct-v0.3', help='Model to use for all operations')
+    parser.add_argument('--model', type=str, default='mistralai/Mistral-7B-v0.3', help='Model to use for all operations')
     parser.add_argument('--creator_model', type=str, help='Model to use for nugget creation')
     parser.add_argument('--scorer_model', type=str, help='Model to use for nugget scoring')
     parser.add_argument('--window_size', type=int, help='Window size for processing')
@@ -118,7 +117,7 @@ def main():
         nuggetizer_kwargs['max_nuggets'] = args.max_nuggets
         
     # nuggetizer = Nuggetizer(**nuggetizer_kwargs)
-    nuggetizer = VLLMNuggetizer(**nuggetizer_kwargs)
+    nuggetizer = HFNuggetizer(**nuggetizer_kwargs)
     
     # Process each record
     logger.info("Reading input file: %s", args.input_file)
