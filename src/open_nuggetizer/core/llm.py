@@ -4,25 +4,21 @@ from typing import Dict, List, Optional, Union, Tuple
 import tiktoken
 from src.open_nuggetizer.utils.api import get_vllm_api_key
 from openai import OpenAI
-from vllm import LLM 
 
 class LLMHandler:
     def __init__(
         self,
         model: str,
-        api_keys: Optional[Union[str, List[str]]] = None,
     ):
         self.model = model    
-        self.current_key_idx = 0
-        api_keys = api_keys or get_vllm_api_key()
-        self.api_keys = [api_keys] if isinstance(api_keys, str) else api_keys
+        self.api_key = get_vllm_api_key()
         self.client = self._initialize_client()
          
     def _initialize_client(self):
         try:    
             return OpenAI(
-                base_url="http://localhost:8080/v1",
-                api_key=self.api_keys[0]
+                base_url="http://localhost:8000/v1",
+                api_key=self.api_key
             )
         except Exception as e:
             raise Exception(f"Error initializing client: {str(e)}")
@@ -50,6 +46,4 @@ class LLMHandler:
                     encoding = tiktoken.get_encoding("cl100k_base")
                 return response, len(encoding.encode(response))
             except Exception as e:
-                self.current_key_idx = (self.current_key_idx + 1) % len(self.api_keys)
-                self.client.api_key = self.api_keys[self.current_key_idx]
                 time.sleep(0.1)

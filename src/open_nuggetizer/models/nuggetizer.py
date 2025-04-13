@@ -11,35 +11,10 @@ from src.open_nuggetizer.core.prompt import render_prompt
 from src.open_nuggetizer.utils.parser import extract_list
 
 class Nuggetizer(BaseNuggetizer):
-    """
-    Nuggetizer class that uses LLMs to create and assign nuggets.
-    
-    Args:
-        model (Optional[str], optional): The model to use for all components. Defaults to None.
-        creator_model (Optional[str], optional): The model to use for the creator component.
-        scorer_model (Optional[str], optional): The model to use for the scorer component. 
-        assigner_model (Optional[str], optional): The model to use for the assigner component. 
-        api_keys (Optional[str], optional): The API keys to use for all components. Defaults to None.
-        creator_mode (NuggetMode, optional): The mode to use for the creator component. Defaults to NuggetMode.ATOMIC.
-        scorer_mode (NuggetScoreMode, optional): The mode to use for the scorer component. Defaults to NuggetScoreMode.VITAL_OKAY.
-        assigner_mode (NuggetAssignMode, optional): The mode to use for the assigner component. Defaults to NuggetAssignMode.SUPPORT_GRADE_3.
-        window_size (Optional[int], optional): The window size to use for all components. Defaults to None.
-        creator_window_size (Optional[int], optional): The window size to use for the creator component. Defaults to 10.
-        scorer_window_size (Optional[int], optional): The window size to use for the scorer component. Defaults to 10.
-        assigner_window_size (Optional[int], optional): The window size to use for the assigner component. Defaults to 10.
-        max_nuggets (Optional[int], optional): The maximum number of nuggets to produce. Defaults to None.
-        creator_max_nuggets (Optional[int], optional): The maximum number of nuggets to produce for the creator component. Defaults to 30.
-        scorer_max_nuggets (Optional[int], optional): The maximum number of nuggets to produce for the scorer component. Defaults to 30.
-        log_level (int, optional): The logging level to use. Defaults to 0.
-        **llm_kwargs: Additional keyword arguments to pass to the LLMHandler.
-    """
+
     def __init__(
         self,
-        model: Optional[str] = None,
-        creator_model: Optional[str] = "mistralai/Mistral-7B-Instruct-v0.3",
-        scorer_model: Optional[str] = "mistralai/Mistral-7B-Instruct-v0.3",
-        assigner_model: Optional[str] = "mistralai/Mistral-7B-Instruct-v0.3",
-        api_keys: Optional[str] = None,
+        model: Optional[str] = "mistralai/Mistral-7B-Instruct-v0.3",
         creator_mode: NuggetMode = NuggetMode.ATOMIC,
         scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
         assigner_mode: NuggetAssignMode = NuggetAssignMode.SUPPORT_GRADE_3,
@@ -71,9 +46,9 @@ class Nuggetizer(BaseNuggetizer):
             scorer_model = model
             assigner_model = model
 
-        self.creator_llm = LLMHandler(creator_model, api_keys, **llm_kwargs)
-        self.scorer_llm = LLMHandler(scorer_model, api_keys, **llm_kwargs)
-        self.assigner_llm = LLMHandler(assigner_model, api_keys, **llm_kwargs)
+        self.creator_llm = LLMHandler(creator_model, **llm_kwargs)
+        self.scorer_llm = LLMHandler(scorer_model, **llm_kwargs)
+        self.assigner_llm = LLMHandler(assigner_model, **llm_kwargs)
         
         if max_nuggets is not None:
             self.creator_max_nuggets = max_nuggets
@@ -100,18 +75,7 @@ class Nuggetizer(BaseNuggetizer):
             f"[{i+1}] {doc.segment}" 
             for i, doc in enumerate(request.documents[start:end])
         ])
-        
-#         return f"""Update the list of atomic nuggets of information (1-12 words), if needed, so they best provide the information required for the query. Leverage only the initial list of nuggets (if exists) and the provided context (this is an iterative process).  Return only the final list of all nuggets in a Pythonic list format (even if no updates). Make sure there is no redundant information. Ensure the updated nugget list has at most {self.creator_max_nuggets} nuggets (can be less), keeping only the most vital ones. Order them in decreasing order of importance. Prefer nuggets that provide more interesting information.
 
-# Search Query: {request.query.text}
-# Context:
-# {context}
-# Search Query: {request.query.text}
-# Initial Nugget List: {nuggets}
-# Initial Nugget List Length: {len(nuggets)}
-
-# Only update the list of atomic nuggets (if needed, else return as is). Do not explain. Always answer in short nuggets (not questions). List in the form ["a", "b", ...] and a and b are strings with no mention of ".
-# Updated Nugget List:"""
         return render_prompt("creator.txt", {
             "query": request.query.text,
             "context": context,
@@ -120,22 +84,6 @@ class Nuggetizer(BaseNuggetizer):
         })
 
     def _create_score_prompt(self, query: str, nuggets: List[Nugget]) -> List[Dict[str, str]]:
-#         messages = [
-#             {
-#                 "role": "system",
-#                 "content": "You are NuggetizeScoreLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."
-#             },
-#             {
-#                 "role": "user",
-#                 "content": f"""Based on the query, label each of the {len(nuggets)} nuggets either a vital or okay based on the following criteria. Vital nuggets represent concepts that must be present in a “good” answer; on the other hand, okay nuggets contribute worthwhile information about the target but are not essential. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget.
-
-# Search Query: {query}
-# Nugget List: {[nugget.text for nugget in nuggets]}
-
-# Only return the list of labels (List[str]). Do not explain.
-# Labels:"""
-#             }
-#         ]
         nugget_texts = [nugget.text for nugget in nuggets]
         content = render_prompt("scorer.txt", {
             "query": query,
@@ -164,20 +112,6 @@ class Nuggetizer(BaseNuggetizer):
             "nuggets": nugget_texts
         })
         return content
-
-
-#         if self.assigner_mode == NuggetAssignMode.SUPPORT_GRADE_2:
-#             instruction = f"""Based on the query and passage, label each of the {len(nuggets)} nuggets either as support or not_support using the following criteria. A nugget that is fully captured in the passage should be labeled as support; otherwise, label them as not_support. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget."""
-#         else:
-#             instruction = f"""Based on the query and passage, label each of the {len(nuggets)} nuggets either as support, partial_support, or not_support using the following criteria. A nugget that is fully captured in the passage should be labeled as support. A nugget that is partially captured in the passage should be labeled as partial_support. If the nugget is not captured at all, label it as not_support. Return the list of labels in a Pythonic list format (type: List[str]). The list should be in the same order as the input nuggets. Make sure to provide a label for each nugget."""
-            
-#         return f"""{instruction}
-
-# Search Query: {query}
-# Passage: {context}
-# Nugget List: {nugget_texts}
-# Only return the list of labels (List[str]). Do not explain.
-# Labels:"""
 
     def create(self, request: Request) -> List[ScoredNugget]:
         """
@@ -217,10 +151,10 @@ class Nuggetizer(BaseNuggetizer):
 
                     if self.log_level >= 2:
                         self.logger.info(f"Raw LLM response:\n{response}")
-                    # response = response.replace("```python", "").replace("```", "").strip()
-                    # nugget_texts = ast.literal_eval(response)
+
                     nugget_texts = extract_list(response)
                     current_nuggets = nugget_texts[:self.creator_max_nuggets]  # Ensure max nuggets
+                    
                     if self.log_level >= 1:
                         self.logger.info(f"Successfully processed window, current nugget count: {len(current_nuggets)}")
                     break
@@ -250,8 +184,6 @@ class Nuggetizer(BaseNuggetizer):
             while trial_count > 0:
                 try:
                     response, _ = self.scorer_llm.run(prompt, temperature=temperature)
-                    # response = response.replace("```python", "").replace("```", "").strip()
-                    # importance_labels = ast.literal_eval(response)
                     importance_labels = extract_list(response)
                     
                     for nugget, importance in zip(window_nuggets, importance_labels):
