@@ -114,16 +114,7 @@ class Nuggetizer(BaseNuggetizer):
         return content
 
     def create(self, request: Request) -> List[ScoredNugget]:
-        """
-        Create nuggets for a given request.
 
-        Args:
-            request (Request): Input request object containing query and documents.
-
-        Returns:
-            List[ScoredNugget]: List of scored nuggets.
-        """
-        
         if self.log_level >= 1:
             self.logger.info("Starting nugget creation process")
             self.logger.info(f"Processing request with {len(request.documents)} documents")
@@ -241,8 +232,9 @@ class Nuggetizer(BaseNuggetizer):
                     response, _ = self.assigner_llm.run(prompt, temperature=temperature)
                     if self.log_level >= 2:
                         self.logger.info(f"Raw LLM response:\n{response}")
-                    response = response.replace("```python", "").replace("```", "").strip()
-                    assignments = ast.literal_eval(response)
+                    # response = response.replace("```python", "").replace("```", "").strip()
+                    # assignments = ast.literal_eval(response)
+                    assignments = extract_list(response)
                     for nugget, assignment in zip(window_nuggets, assignments):
                         assigned_nuggets.append(
                             AssignedScoredNugget(

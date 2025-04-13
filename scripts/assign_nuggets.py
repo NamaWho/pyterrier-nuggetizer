@@ -5,8 +5,8 @@ import logging
 from pathlib import Path
 from typing import Dict, List
 
-from nuggetizer.core.types import ScoredNugget
-from nuggetizer.models.nuggetizer import Nuggetizer
+from src.open_nuggetizer.core.types import ScoredNugget
+from src.open_nuggetizer.models.nuggetizer import Nuggetizer
 
 
 def setup_logging(log_level: int) -> None:
@@ -30,11 +30,9 @@ def read_jsonl(file_path: str) -> List[Dict]:
             data.append(json.loads(line))
     return data
 
-
 def get_run_id(file_path: str) -> str:
     """Extract run_id from the filename by dropping the .jsonl extension."""
     return Path(file_path).stem
-
 
 def process_record(answer_record: Dict, nugget_record: Dict, run_id: str, nuggetizer: Nuggetizer, logger: logging.Logger) -> Dict:
     """Process records from answer and nugget files to create output record."""
@@ -50,7 +48,7 @@ def process_record(answer_record: Dict, nugget_record: Dict, run_id: str, nugget
     logger.info("Processing query: %s (qid: %s)", nugget_record.get('query', 'N/A'), nugget_record.get('qid', 'N/A'))
     logger.info("Assigning %d nuggets to answer text (length: %d)", len(nuggets), len(answer_text))
     
-    assigned_nuggets = nuggetizer.assign(answer_text, nuggets)
+    assigned_nuggets = nuggetizer.assign(nugget_record['query'], answer_text, nuggets)
     
     # Create output record
     output_record = {
@@ -100,8 +98,7 @@ def main():
     parser.add_argument('--nugget_file', type=str, required=True, help='Path to nugget JSONL file')
     parser.add_argument('--answer_file', type=str, required=True, help='Path to answer JSONL file')
     parser.add_argument('--output_file', type=str, required=True, help='Path to output JSONL file')
-    parser.add_argument('--model', type=str, default='gpt-4o', help='Model to use for assignment')
-    parser.add_argument('--use_azure_openai', action='store_true', help='Use Azure OpenAI')
+    parser.add_argument('--model', type=str, default='mistralai/Mistral-7B-Instruct-v0.3', help='Model to use for assignment')
     parser.add_argument('--log_level', type=int, default=0, choices=[0, 1, 2],
                       help='Logging level: 0=warnings only, 1=info, 2=debug')
     args = parser.parse_args()
@@ -120,7 +117,7 @@ def main():
     
     # Initialize nuggetizer (only using assigner component)
     logger.info("Initializing Nuggetizer with model: %s", args.model)
-    nuggetizer = Nuggetizer(assigner_model=args.model, log_level=args.log_level, use_azure_openai=args.use_azure_openai)
+    nuggetizer = Nuggetizer(model=args.model, log_level=args.log_level)
     
     # Read input files
     logger.info("Reading nugget file: %s", args.nugget_file)
