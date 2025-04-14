@@ -232,8 +232,6 @@ class Nuggetizer(BaseNuggetizer):
                     response, _ = self.assigner_llm.run(prompt, temperature=temperature)
                     if self.log_level >= 2:
                         self.logger.info(f"Raw LLM response:\n{response}")
-                    # response = response.replace("```python", "").replace("```", "").strip()
-                    # assignments = ast.literal_eval(response)
                     assignments = extract_list(response)
                     for nugget, assignment in zip(window_nuggets, assignments):
                         assigned_nuggets.append(

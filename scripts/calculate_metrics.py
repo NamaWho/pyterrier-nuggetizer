@@ -23,8 +23,10 @@ def process_records(records: List[Dict]) -> List[Dict]:
         record['metrics'] = {
             'qid': metrics.qid,
             'strict_vital_score': metrics.strict_vital_score,
-            'strict_all_score': metrics.strict_all_score,
             'vital_score': metrics.vital_score,
+            'strict_weighted_score': metrics.strict_weighted_score,
+            'weighted_score': metrics.weighted_score,
+            'strict_all_score': metrics.strict_all_score,
             'all_score': metrics.all_score,
         }
     return records
