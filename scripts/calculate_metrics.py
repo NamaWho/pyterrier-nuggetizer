@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-from src.open_nuggetizer.core.metrics import calculate_nugget_scores, calculate_global_metrics
+from open_nuggetizer.metrics import calculate_nugget_scores, calculate_global_metrics
 
 
 def read_jsonl(file_path: str) -> List[Dict]:
