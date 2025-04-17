@@ -95,7 +95,7 @@ class Nuggetizer(pt.Transformer):
         columns = inp.columns
         if any([x not in columns for x in [self.query_field, self.document_field]]):
             raise ValueError(
-                "DataFrame appears to be malformatted, minimum expected columns [{self.query_field}, {self.document_field}], got {columns}"
+                f"DataFrame appears to be malformatted, minimum expected columns [{self.query_field}, {self.document_field}], got {columns}"
             )
 
         if self.nugget_field not in columns:
