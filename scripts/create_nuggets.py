@@ -46,7 +46,7 @@ def main():
         max_nuggets=args.max_nuggets
     )
 
-    nuggets = nuggetizer.transform(run_file)
+    nuggets = nuggetizer(run_file)
     save_nuggets(nuggets, args.output_file)
 
     logger.info("Processing complete")
