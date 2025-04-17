@@ -1,4 +1,4 @@
 from nuggetizer import Nuggetizer
 from . import prompts
 
-__all__ = ['Nuggetizer', 'prompts']
+__all__ = ["Nuggetizer", "prompts"]

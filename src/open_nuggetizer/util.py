@@ -15,12 +15,13 @@ def extract_list(text: str) -> List[str]:
         raise ValueError("No valid Python list found in response.")
 
 
-def iter_windows(n: int,
-                 window_size: int,
-                 stride: int,
-                 verbose : bool = False,
-                 desc: str = None):
-    for start_idx in tqdm(range((n // stride) * stride, -1, -stride, desc=desc, disable=verbose), unit='window'):
+def iter_windows(
+    n: int, window_size: int, stride: int, verbose: bool = False, desc: str = None
+):
+    for start_idx in tqdm(
+        range((n // stride) * stride, -1, -stride, desc=desc, disable=verbose),
+        unit="window",
+    ):
         end_idx = start_idx + window_size
         if end_idx > n:
             end_idx = n
@@ -34,19 +35,21 @@ def save_nuggets(nuggets: pd.DataFrame, file: str) -> None:
     optional = ["importance", "assignment"]
     columns = nuggets.columns
     if any([x not in columns for x in essential]):
-        raise ValueError("Require at least {essential} columns to save, found {columns}")
+        raise ValueError(
+            "Require at least {essential} columns to save, found {columns}"
+        )
 
     for c in optional:
         if c not in columns:
             nuggets[c] = -1
 
-    nuggets = nuggets[essential+optional]
-    nuggets.to_csv(file, sep='\t', index=False, header=False)
+    nuggets = nuggets[essential + optional]
+    nuggets.to_csv(file, sep="\t", index=False, header=False)
 
 
 def load_nuggets(file: str) -> pd.DataFrame:
     essential = ["qid", "nugget_id", "nugget", "importance", "assignment"]
-    nuggets = pd.read_csv(file, sep='\t', index_col=False, names=essential)
+    nuggets = pd.read_csv(file, sep="\t", index_col=False, names=essential)
 
     return nuggets
 

@@ -8,9 +8,10 @@ from pyterrier_rag.llm import LLM
 import pandas as pd
 
 from open_nuggetizer._types import NuggetMode, NuggetScoreMode
-from open_nuggetizer.prompts import (CREATOR_PROMPT_STRING,
-                                     SCORER_PROMPT_STRING,
-                                     )
+from open_nuggetizer.prompts import (
+    CREATOR_PROMPT_STRING,
+    SCORER_PROMPT_STRING,
+)
 from open_nuggetizer.util import iter_windows, extract_list
 
 
@@ -33,25 +34,32 @@ class Nuggetizer(pt.Transformer):
         score_field (str): Output column for importance scores
         verbose (bool): Enable verbose logging
     """
+
     def __init__(
-            self,
-            llm: LLM,
-            creator_mode: NuggetMode = NuggetMode.ATOMIC,
-            scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
-            window_size: Optional[int] = None,
-            creator_window_size: Optional[int] = 10,
-            scorer_window_size: Optional[int] = 10,
-            max_nuggets: Optional[int] = 30,
-            query_field: str = 'query',
-            document_field: str = 'document',
-            nugget_field: str = 'nugget',
-            score_field: str = 'importance',
-            verbose: bool = False,
+        self,
+        llm: LLM,
+        creator_mode: NuggetMode = NuggetMode.ATOMIC,
+        scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
+        window_size: Optional[int] = None,
+        creator_window_size: Optional[int] = 10,
+        scorer_window_size: Optional[int] = 10,
+        max_nuggets: Optional[int] = 30,
+        query_field: str = "query",
+        document_field: str = "document",
+        nugget_field: str = "nugget",
+        score_field: str = "importance",
+        verbose: bool = False,
     ):
         assert hasattr(llm, "generate"), "llm must have a generate method"
-        assert window_size is None or isinstance(window_size, int), "window_size must be an integer"
-        assert creator_window_size is None or isinstance(creator_window_size, int), "creator_window_size must be an integer"
-        assert scorer_window_size is None or isinstance(scorer_window_size, int), "scorer_window_size must be an integer"
+        assert window_size is None or isinstance(
+            window_size, int
+        ), "window_size must be an integer"
+        assert creator_window_size is None or isinstance(
+            creator_window_size, int
+        ), "creator_window_size must be an integer"
+        assert scorer_window_size is None or isinstance(
+            scorer_window_size, int
+        ), "scorer_window_size must be an integer"
 
         self.llm = llm
         self.creator_mode = creator_mode
@@ -86,7 +94,9 @@ class Nuggetizer(pt.Transformer):
     def transform(self, inp: pd.DataFrame) -> pd.DataFrame:
         columns = inp.columns
         if any([x not in columns for x in [self.query_field, self.document_field]]):
-            raise ValueError("DataFrame appears to be malformatted, minimum expected columns [{self.query_field}, {self.document_field}], got {columns}")
+            raise ValueError(
+                "DataFrame appears to be malformatted, minimum expected columns [{self.query_field}, {self.document_field}], got {columns}"
+            )
 
         if self.nugget_field not in columns:
             inp = self.create(inp)
@@ -110,22 +120,30 @@ class NuggetCreator(pt.Transformer):
         prompt (PromptTransformer): Configured prompt transformation pipeline
     """
 
-    system_message: str = "You are NuggetizeLLM, an intelligent assistant that can update a list of atomic nuggets to best provide all the information required for the query."
+    system_message: str = (
+        "You are NuggetizeLLM, an intelligent assistant that can update a list of atomic nuggets to best provide all the information required for the query."
+    )
 
     def __init__(
-            self,
-            nuggetizer: Nuggetizer,
-            mode: NuggetMode = None,
-            window_size: Optional[int] = None,
-            verbose: bool = None
+        self,
+        nuggetizer: Nuggetizer,
+        mode: NuggetMode = None,
+        window_size: Optional[int] = None,
+        verbose: bool = None,
     ):
         assert nuggetizer is not None, "nuggetizer must be provided"
-        assert isinstance(nuggetizer, Nuggetizer), "nuggetizer must be an instance of Nuggetizer"
-        assert window_size is None or isinstance(window_size, int), "window_size must be an integer"
+        assert isinstance(
+            nuggetizer, Nuggetizer
+        ), "nuggetizer must be an instance of Nuggetizer"
+        assert window_size is None or isinstance(
+            window_size, int
+        ), "window_size must be an integer"
 
         self.nuggetizer = nuggetizer
         self.mode = mode if mode else nuggetizer.creator_mode
-        self.window_size = window_size if window_size else nuggetizer.creator_window_size
+        self.window_size = (
+            window_size if window_size else nuggetizer.creator_window_size
+        )
         self.query_field = nuggetizer.query_field
         self.document_field = nuggetizer.document_field
         self.nugget_field = nuggetizer.nugget_field
@@ -138,7 +156,12 @@ class NuggetCreator(pt.Transformer):
             model_name_or_path=self.nuggetizer.llm.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.nugget_field,
-            input_fields=[self.query_field, 'context_documents', self.nugget_field, 'max_nuggets'],
+            input_fields=[
+                self.query_field,
+                "context_documents",
+                self.nugget_field,
+                "max_nuggets",
+            ],
         )
 
         self.logger = logging.getLogger(__name__)
@@ -148,8 +171,7 @@ class NuggetCreator(pt.Transformer):
     def transform_iter(self, inp: Iterable[dict]) -> Iterable[dict]:
         return self.transform_by_query(inp)
 
-    def transform_by_query(self,
-                           inp: Iterable[dict]) -> Iterable[dict]:
+    def transform_by_query(self, inp: Iterable[dict]) -> Iterable[dict]:
         inp = list(inp)
         qid = inp[0].get("qid", None)
         query = inp[0][self.query_field]
@@ -157,32 +179,33 @@ class NuggetCreator(pt.Transformer):
 
         nuggets: List[str] = []
 
-        for start, end, _ in iter_windows(len(documents),
-                                               self.window_size,
-                                               self.window_size,
-                                               verbose=self.verbose):
+        for start, end, _ in iter_windows(
+            len(documents), self.window_size, self.window_size, verbose=self.verbose
+        ):
             current_documents = documents[start:end]
-            context_string = "\n".join([
-                f"[{i+1}] {doc}"
-                for i, doc in enumerate(current_documents)
-            ])
+            context_string = "\n".join(
+                [f"[{i+1}] {doc}" for i, doc in enumerate(current_documents)]
+            )
             context = {
                 self.query_field: query,
-                'context_documents': context_string,
+                "context_documents": context_string,
                 self.nugget_field: nuggets,
-                'max_nuggets': self.max_nuggets
-
+                "max_nuggets": self.max_nuggets,
             }
             prompt = [self.prompt.create_prompt(**context)]
             output = self.nuggetizer.generate(prompt)[0]
-            nuggets = self.prompt.answer_extraction(output)[:self.max_nuggets]
+            nuggets = self.prompt.answer_extraction(output)[: self.max_nuggets]
 
-        return [{
-            'qid': qid,
-            self.query_field: query,
-            f'{self.nugget_field}_id': [f'{qid}_{i+1}' for i in range(len(nuggets))],
-            self.nugget_field: nuggets
-        }]
+        return [
+            {
+                "qid": qid,
+                self.query_field: query,
+                f"{self.nugget_field}_id": [
+                    f"{qid}_{i+1}" for i in range(len(nuggets))
+                ],
+                self.nugget_field: nuggets,
+            }
+        ]
 
 
 class NuggetScorer(pt.Transformer):
@@ -201,25 +224,33 @@ class NuggetScorer(pt.Transformer):
         prompt (PromptTransformer): Configured prompt transformation pipeline
     """
 
-    system_message: str = "You are NuggetizeScoreLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."
+    system_message: str = (
+        "You are NuggetizeScoreLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."
+    )
 
     def __init__(
-            self,
-            nuggetizer: Nuggetizer,
-            mode: NuggetScoreMode = None,
-            window_size: Optional[int] = None,
-            max_nuggets: Optional[int] = None,
-            verbose: bool = None
+        self,
+        nuggetizer: Nuggetizer,
+        mode: NuggetScoreMode = None,
+        window_size: Optional[int] = None,
+        max_nuggets: Optional[int] = None,
+        verbose: bool = None,
     ):
         assert nuggetizer is not None, "nuggetizer must be provided"
-        assert isinstance(nuggetizer, Nuggetizer), "nuggetizer must be an instance of Nuggetizer"
-        assert window_size is None or isinstance(window_size, int), "window_size must be an integer"
-        assert max_nuggets is None or isinstance(max_nuggets, int), "max_nuggets must be an integer"
+        assert isinstance(
+            nuggetizer, Nuggetizer
+        ), "nuggetizer must be an instance of Nuggetizer"
+        assert window_size is None or isinstance(
+            window_size, int
+        ), "window_size must be an integer"
+        assert max_nuggets is None or isinstance(
+            max_nuggets, int
+        ), "max_nuggets must be an integer"
 
         self.nuggetizer = nuggetizer
         self.mode = mode if mode else nuggetizer.scorer_mode
         self.window_size = window_size if window_size else nuggetizer.scorer_window_size
-        self.max_nuggets = max_nuggets if max_nuggets else nuggetizer.max_nuggets 
+        self.max_nuggets = max_nuggets if max_nuggets else nuggetizer.max_nuggets
         self.query_field = nuggetizer.query_field
         self.nugget_field = nuggetizer.nugget_field
         self.score_field = nuggetizer.score_field
@@ -233,7 +264,6 @@ class NuggetScorer(pt.Transformer):
             answer_extraction=extract_list,
             output_field=self.score_field,
             input_fields=[self.query_field, self.nugget_field],
-
         )
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO if self.verbose else logging.WARNING)
@@ -242,41 +272,39 @@ class NuggetScorer(pt.Transformer):
     def transform_iter(self, inp: Iterable[dict]) -> Iterable[dict]:
         return self.transform_by_query(inp)
 
-    def transform_by_query(self,
-                           inp: Iterable[dict]) -> Iterable[dict]:
+    def transform_by_query(self, inp: Iterable[dict]) -> Iterable[dict]:
         inp = list(inp)
         qid = inp[0].get("qid", None)
         query = inp[0][self.query_field]
-        nugget_ids = inp[f'{self.nugget_field}_id']
+        nugget_ids = inp[f"{self.nugget_field}_id"]
         nuggets = inp[self.nugget_field]
 
         scores: List[str] = []
 
-        for start, end, _ in iter_windows(len(nuggets),
-                                          self.window_size,
-                                          self.window_size,
-                                          verbose=self.verbose):
+        for start, end, _ in iter_windows(
+            len(nuggets), self.window_size, self.window_size, verbose=self.verbose
+        ):
             current_nuggets = nuggets[start:end]
-            context_string = "\n".join([
-                f"[{i+1}] {nug}"
-                for i, nug in enumerate(current_nuggets)
-            ])
+            context_string = "\n".join(
+                [f"[{i+1}] {nug}" for i, nug in enumerate(current_nuggets)]
+            )
             context = {
                 self.query_field: query,
                 self.nugget_field: context_string,
-
             }
             prompt = [self.prompt.create_prompt(**context)]
             output = self.nuggetizer.generate(prompt)[0]
             scores.extend(self.prompt.answer_extraction(output))
 
-        return [{
-            'qid': qid,
-            self.query_field: query,
-            f'{self.nugget_field}_id': nugget_ids,
-            self.nugget_field: nuggets,
-            self.score_field: scores
-        }]
+        return [
+            {
+                "qid": qid,
+                self.query_field: query,
+                f"{self.nugget_field}_id": nugget_ids,
+                self.nugget_field: nuggets,
+                self.score_field: scores,
+            }
+        ]
 
 
 __all__ = ["Nuggetizer", "NuggetCreator", "NuggetScorer"]
