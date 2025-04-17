@@ -4,7 +4,7 @@ import logging
 import pyterrier as pt
 import pyterrier_alpha as pta
 from pyterrier_rag.prompt import PromptTransformer
-from pyterrier_rag.llm import LLM
+from pyterrier_rag import Backend
 import pandas as pd
 
 from open_nuggetizer._types import NuggetMode, NuggetScoreMode
@@ -21,7 +21,7 @@ class Nuggetizer(pt.Transformer):
     relevant to a query using a large language model (LLM).
 
     Parameters:
-        llm (LLM): Language model instance with generate capability
+        backend (backend): Language model instance with generate capability
         creator_mode (NuggetMode): Strategy for nugget creation (atomic/noun-phrase/question)
         scorer_mode (NuggetScoreMode): Grading of nugget storing (2 / 3)
         window_size (int, optional): Global window size for document/nugget processing
@@ -37,7 +37,7 @@ class Nuggetizer(pt.Transformer):
 
     def __init__(
         self,
-        llm: LLM,
+        backend: Backend,
         creator_mode: NuggetMode = NuggetMode.ATOMIC,
         scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
         window_size: Optional[int] = None,
@@ -50,7 +50,7 @@ class Nuggetizer(pt.Transformer):
         score_field: str = "importance",
         verbose: bool = False,
     ):
-        assert hasattr(llm, "generate"), "llm must have a generate method"
+        assert hasattr(backend, "generate"), "backend must have a generate method"
         assert window_size is None or isinstance(
             window_size, int
         ), "window_size must be an integer"
@@ -61,7 +61,7 @@ class Nuggetizer(pt.Transformer):
             scorer_window_size, int
         ), "scorer_window_size must be an integer"
 
-        self.llm = llm
+        self.backend = backend
         self.creator_mode = creator_mode
         self.scorer_mode = scorer_mode
         self.window_size = window_size
@@ -83,7 +83,7 @@ class Nuggetizer(pt.Transformer):
         self.logger.setLevel(logging.INFO if self.verbose else logging.WARNING)
 
     def generate(self, inp: Iterable[str]):
-        return self.llm.generate(inp)
+        return self.backend.generate(inp)
 
     def create(self, inp: pd.DataFrame) -> pd.DataFrame:
         return NuggetCreator(self)(inp)
@@ -153,7 +153,7 @@ class NuggetCreator(pt.Transformer):
         self.prompt = PromptTransformer(
             instruction=CREATOR_PROMPT_STRING,
             system_message=self.system_message,
-            model_name_or_path=self.nuggetizer.llm.model_name_or_path,
+            model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.nugget_field,
             input_fields=[
@@ -260,7 +260,7 @@ class NuggetScorer(pt.Transformer):
         self.prompt = PromptTransformer(
             instruction=SCORER_PROMPT_STRING,
             system_message=self.system_message,
-            model_name_or_path=self.nuggetizer.llm.model_name_or_path,
+            model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.score_field,
             input_fields=[self.query_field, self.nugget_field],
