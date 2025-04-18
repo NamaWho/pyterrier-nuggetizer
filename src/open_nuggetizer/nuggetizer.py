@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, List
+from typing import Optional, Iterable, List, Set
 import logging
 
 import pyterrier as pt
@@ -7,10 +7,12 @@ from pyterrier_rag.prompt import PromptTransformer
 from pyterrier_rag import Backend
 import pandas as pd
 
-from open_nuggetizer._types import NuggetMode, NuggetScoreMode
+from open_nuggetizer._types import NuggetMode, NuggetScoreMode, NuggetAssignMode
 from open_nuggetizer.prompts import (
     CREATOR_PROMPT_STRING,
     SCORER_PROMPT_STRING,
+    ASSIGNER_GRADE_2_PROMPT_STRING,
+    ASSIGNER_GRADE_3_PROMPT_STRING,
 )
 from open_nuggetizer.util import iter_windows, extract_list
 
@@ -40,15 +42,19 @@ class Nuggetizer(pt.Transformer):
         backend: Backend,
         creator_mode: NuggetMode = NuggetMode.ATOMIC,
         scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
+        assigner_mode: NuggetAssignMode = NuggetAssignMode.SUPPORT_GRADE_2,
         window_size: Optional[int] = None,
         creator_window_size: Optional[int] = 10,
         scorer_window_size: Optional[int] = 10,
+        assigner_window_size: Optional[int] = 10,
         max_nuggets: Optional[int] = 30,
-        query_field: str = "query",
-        document_field: str = "document",
-        nugget_field: str = "nugget",
-        score_field: str = "importance",
-        verbose: bool = False,
+        query_field: Optional[str] = "query",
+        document_field: Optional[str] = "document",
+        answer_field: Optional[str] = "qanswer",
+        nugget_field: Optional[str] = "nugget",
+        score_field: Optional[str] = "importance",
+        vital_field: Optional[str] = "vital",
+        verbose: Optional[bool] = False,
     ):
         assert hasattr(backend, "generate"), "backend must have a generate method"
         assert window_size is None or isinstance(
@@ -60,24 +66,34 @@ class Nuggetizer(pt.Transformer):
         assert scorer_window_size is None or isinstance(
             scorer_window_size, int
         ), "scorer_window_size must be an integer"
+        assert assigner_window_size is None or isinstance(
+            assigner_window_size, int
+        ), "assigner_window_size must be an integer"
 
         self.backend = backend
         self.creator_mode = creator_mode
         self.scorer_mode = scorer_mode
+        self.assigner_mode = assigner_mode
         self.window_size = window_size
         self.creator_window_size = creator_window_size
         self.scorer_window_size = scorer_window_size
+        self.assigner_window_size = assigner_window_size
         self.max_nuggets = max_nuggets
         self.query_field = query_field
         self.document_field = document_field
+        self.answer_field = answer_field
         self.nugget_field = nugget_field
         self.score_field = score_field
+        self.vital_field = vital_field
         self.verbose = verbose
+
+        self.__post_init__()
 
     def __post_init__(self):
         if self.window_size:
             self.creator_window_size = self.window_size
             self.scorer_window_size = self.window_size
+            self.assigner_window_size = self.window_size
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO if self.verbose else logging.WARNING)
@@ -90,6 +106,9 @@ class Nuggetizer(pt.Transformer):
 
     def score(self, inp: pd.DataFrame) -> pd.DataFrame:
         return NuggetScorer(self)(inp)
+    
+    def assign(self, inp: pd.DataFrame) -> pd.DataFrame:
+        return NuggetAssigner(self)(inp)
 
     def transform(self, inp: pd.DataFrame) -> pd.DataFrame:
         columns = inp.columns
@@ -101,10 +120,76 @@ class Nuggetizer(pt.Transformer):
         if self.nugget_field not in columns:
             inp = self.create(inp)
             return self.score(inp)
+        if self.answer_field in columns:
+            return self.assign(inp)
         else:
             return self.score(inp)
 
+    def make_qrels(
+        self,
+        run: pd.DataFrame,
+        nuggets: pd.DataFrame
+    ) -> pd.DataFrame:
+        # 1) validate inputs
+        required_run: Set[str] = {self.query_field, self.answer_field}
+        if not required_run.issubset(run.columns):
+            raise ValueError(
+                f"run must contain columns {required_run}, got {list(run.columns)}"
+            )
+        required_nuggets: Set[str] = {
+            self.query_field,
+            f"{self.nugget_field}_id",
+            self.nugget_field,
+            self.score_field
+        }
+        if not required_nuggets.issubset(nuggets.columns):
+            raise ValueError(
+                f"nuggets must contain columns {required_nuggets}, got {list(nuggets.columns)}"
+            )
 
+        df = pd.merge(
+            run[[self.query_field, self.answer_field]],
+            nuggets,
+            on=self.query_field,
+            how="inner"
+        )
+
+        assigned = NuggetAssigner(self).transform(df)
+
+        list_cols = [
+            self.answer_field,
+            f"{self.nugget_field}_id",
+            self.nugget_field,
+            self.score_field,
+            self.vital_field
+        ]
+        for c in list_cols:
+            if assigned[c].apply(lambda x: isinstance(x, list)).any():
+                assigned = assigned.explode(c)
+
+        # 5) map textual vitalness → binary relevance
+        def to_rel(x: str) -> int:
+            xl = str(x).strip().lower()
+            # adjust these tests to match your LLM’s exact outputs
+            return 1 if ("vital" in xl or "support" in xl or xl in {"1", "true", "yes"}) else 0
+
+        assigned["relevance"] = assigned[self.vital_field].map(to_rel)
+
+        # 6) produce standard qrels: query_id, doc_id, relevance
+        qrels = (
+            assigned
+            .rename(
+                columns={
+                    self.query_field: "query_id",
+                    f"{self.nugget_field}_id": "doc_id"
+                }
+            )
+            [["query_id", "doc_id", "relevance"]]
+            .reset_index(drop=True)
+        )
+        return qrels
+
+        
 class NuggetCreator(pt.Transformer):
     """
     Component that generates query-relevant information nuggets from documents.
@@ -221,12 +306,18 @@ class NuggetScorer(pt.Transformer):
 
     Attributes:
         system_message (str): The provided system message to the LLM
+        mapping (dict): Mapping of labels to scores
         prompt (PromptTransformer): Configured prompt transformation pipeline
     """
 
     system_message: str = (
         "You are NuggetizeScoreLLM, an intelligent assistant that can label a list of atomic nuggets based on their importance for a given search query."
     )
+
+    mapping: Dict[str, int] = {
+        "vital": 1,
+        "okay": 0,
+    }
 
     def __init__(
         self,
@@ -295,7 +386,9 @@ class NuggetScorer(pt.Transformer):
             prompt = [self.prompt.create_prompt(**context)]
             output = self.nuggetizer.generate(prompt)[0]
             scores.extend(self.prompt.answer_extraction(output))
-
+        scores = [
+            self.mapping.get(x.lower(), 0) for x in scores
+        ]
         return [
             {
                 "qid": qid,
@@ -307,4 +400,116 @@ class NuggetScorer(pt.Transformer):
         ]
 
 
-__all__ = ["Nuggetizer", "NuggetCreator", "NuggetScorer"]
+class NuggetAssigner(pt.Transformer):
+    """
+    Component that assigns nuggets based on their supporting an answer
+
+    Parameters:
+        nuggetizer (Nuggetizer): Parent nuggetizer instance
+        mode (NuggetAssignMode): Override for assigning strategy
+        window_size (int, optional): Override for nugget processing window size
+        verbose (bool, optional): Override for verbose logging
+
+    Attributes:
+        system_message (str): The provided system message to the LLM
+        prompt (PromptTransformer): Configured prompt transformation pipeline
+    """
+
+    system_message: str = "You are NuggetizeAssignerLLM, an intelligent assistant that can label a list of atomic nuggets based on if they are captured by a given passage."
+
+    def __init__(
+        self,
+        nuggetizer: Nuggetizer,
+        mode: NuggetAssignMode = None,
+        window_size: Optional[int] = None,
+        verbose: bool = None,
+    ):
+        assert nuggetizer is not None, "nuggetizer must be provided"
+        assert isinstance(
+            nuggetizer, Nuggetizer
+        ), "nuggetizer must be an instance of Nuggetizer"
+        assert window_size is None or isinstance(
+            window_size, int
+        ), "window_size must be an integer"
+
+        self.nuggetizer = nuggetizer
+        self.mode = mode if mode else nuggetizer.scorer_mode
+        self.window_size = window_size if window_size else nuggetizer.scorer_window_size
+        self.query_field = nuggetizer.query_field
+        self.nugget_field = nuggetizer.nugget_field
+        self.score_field = nuggetizer.score_field
+        self.answer_field = nuggetizer.answer_field
+        self.vital_field = nuggetizer.vital_field
+
+        self.verbose = verbose if verbose is not None else nuggetizer.verbose
+
+        instruction = ASSIGNER_GRADE_2_PROMPT_STRING if self.mode == NuggetAssignMode.SUPPORT_GRADE_2 else ASSIGNER_GRADE_3_PROMPT_STRING
+        self.prompt = PromptTransformer(
+            instruction=instruction,
+            system_message=self.system_message,
+            model_name_or_path=self.nuggetizer.backend.model_name_or_path,
+            answer_extraction=extract_list,
+            output_field=self.vital_field,
+            input_fields=[self.query_field, "context", "nuggets"],
+        )
+
+        if self.mode == NuggetAssignMode.SUPPORT_GRADE_2:
+            self.mapping = {
+                "support": 1,
+                "not_support": 0,
+            }
+        else:
+            self.mapping = {
+                "support": 2,
+                "partial_support": 1,
+                "not_support": 0,
+            }
+
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO if self.verbose else logging.WARNING)
+
+    @pta.transform.by_query(add_ranks=False)
+    def transform_iter(self, inp: Iterable[dict]) -> Iterable[dict]:
+        return self.transform_by_query(inp)
+
+    def transform_by_query(self, inp: Iterable[dict]) -> Iterable[dict]:
+        inp = list(inp)
+        qid = inp[0].get("qid", None)
+        query = inp[0][self.query_field]
+        qanswer = inp[0][self.answer_field]
+        nugget_ids = inp[f"{self.nugget_field}_id"]
+        nuggets = inp[self.nugget_field]
+        importance = inp[self.score_field]
+
+        scores: List[str] = []
+
+        for start, end, _ in iter_windows(
+            len(nuggets), self.window_size, self.window_size, verbose=self.verbose
+        ):
+            current_nuggets = nuggets[start:end]
+            context = {
+                self.query_field: query,
+                "nuggets": current_nuggets,
+                "context": qanswer,
+            }
+            prompt = [self.prompt.create_prompt(**context)]
+            output = self.nuggetizer.generate(prompt)[0]
+            scores.extend(self.prompt.answer_extraction(output))
+        scores = [
+            self.mapping.get(x.lower(), 0) for x in scores
+        ]
+        n = len(scores)
+        return [
+            {
+                "qid": [qid]*n,
+                self.query_field: [query]*n,
+                self.answer_field: [qanswer]*n,
+                f"{self.nugget_field}_id": nugget_ids,
+                self.nugget_field: nuggets,
+                self.score_field: importance,
+                self.vital_field: scores,
+            }
+        ]
+
+
+__all__ = ["Nuggetizer", "NuggetCreator", "NuggetScorer", "NuggetAssigner"]
