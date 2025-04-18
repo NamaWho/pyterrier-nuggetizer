@@ -17,7 +17,7 @@ from open_nuggetizer.util import iter_windows, extract_list
 
 class Nuggetizer(pt.Transformer):
     """
-    A transformer pipeline component that generates and scores information nuggets
+    A pipeline component that generates and scores information nuggets
     relevant to a query using a large language model (LLM).
 
     Parameters:
@@ -107,7 +107,7 @@ class Nuggetizer(pt.Transformer):
 
 class NuggetCreator(pt.Transformer):
     """
-    Transformer component that generates query-relevant information nuggets from documents.
+    Component that generates query-relevant information nuggets from documents.
 
     Parameters:
         nuggetizer (Nuggetizer): Parent nuggetizer instance
@@ -210,7 +210,7 @@ class NuggetCreator(pt.Transformer):
 
 class NuggetScorer(pt.Transformer):
     """
-    Transformer component that scores nuggets based on their query importance.
+    Component that scores nuggets based on their query importance.
 
     Parameters:
         nuggetizer (Nuggetizer): Parent nuggetizer instance
