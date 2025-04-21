@@ -13,7 +13,7 @@ from open_nuggetizer.prompts import (
     SCORER_PROMPT_STRING,
     ASSIGNER_GRADE_2_PROMPT_STRING,
     ASSIGNER_GRADE_3_PROMPT_STRING,
-    make_callable_template
+    make_callable_template,
 )
 from open_nuggetizer.util import iter_windows, extract_list
 
@@ -107,7 +107,7 @@ class Nuggetizer(pt.Transformer):
 
     def score(self, inp: pd.DataFrame) -> pd.DataFrame:
         return NuggetScorer(self)(inp)
-    
+
     def assign(self, inp: pd.DataFrame) -> pd.DataFrame:
         return NuggetAssigner(self)(inp)
 
@@ -126,11 +126,7 @@ class Nuggetizer(pt.Transformer):
         else:
             return self.score(inp)
 
-    def make_qrels(
-        self,
-        run: pd.DataFrame,
-        nuggets: pd.DataFrame
-    ) -> pd.DataFrame:
+    def make_qrels(self, run: pd.DataFrame, nuggets: pd.DataFrame) -> pd.DataFrame:
         # 1) validate inputs
         required_run: Set[str] = {self.query_field, self.answer_field}
         if not required_run.issubset(run.columns):
@@ -141,7 +137,7 @@ class Nuggetizer(pt.Transformer):
             self.query_field,
             f"{self.nugget_field}_id",
             self.nugget_field,
-            self.score_field
+            self.score_field,
         }
         if not required_nuggets.issubset(nuggets.columns):
             raise ValueError(
@@ -152,7 +148,7 @@ class Nuggetizer(pt.Transformer):
             run[[self.query_field, self.answer_field]],
             nuggets,
             on=self.query_field,
-            how="inner"
+            how="inner",
         )
 
         assigned = NuggetAssigner(self).transform(df)
@@ -162,7 +158,7 @@ class Nuggetizer(pt.Transformer):
             f"{self.nugget_field}_id",
             self.nugget_field,
             self.score_field,
-            self.vital_field
+            self.vital_field,
         ]
         for c in list_cols:
             if assigned[c].apply(lambda x: isinstance(x, list)).any():
@@ -172,25 +168,21 @@ class Nuggetizer(pt.Transformer):
         def to_rel(x: str) -> int:
             xl = str(x).strip().lower()
             # adjust these tests to match your LLM’s exact outputs
-            return 1 if ("vital" in xl or "support" in xl or xl in {"1", "true", "yes"}) else 0
+            return (
+                1
+                if ("vital" in xl or "support" in xl or xl in {"1", "true", "yes"})
+                else 0
+            )
 
         assigned["relevance"] = assigned[self.vital_field].map(to_rel)
 
         # 6) produce standard qrels: query_id, doc_id, relevance
-        qrels = (
-            assigned
-            .rename(
-                columns={
-                    self.query_field: "query_id",
-                    f"{self.nugget_field}_id": "doc_id"
-                }
-            )
-            [["query_id", "doc_id", "relevance"]]
-            .reset_index(drop=True)
-        )
+        qrels = assigned.rename(
+            columns={self.query_field: "query_id", f"{self.nugget_field}_id": "doc_id"}
+        )[["query_id", "doc_id", "relevance"]].reset_index(drop=True)
         return qrels
 
-        
+
 class NuggetCreator(pt.Transformer):
     """
     Component that generates query-relevant information nuggets from documents.
@@ -393,9 +385,7 @@ class NuggetScorer(pt.Transformer):
             prompt = [self.prompt.create_prompt(**context)]
             output = self.nuggetizer.generate(prompt)[0]
             scores.extend(self.prompt.answer_extraction(output))
-        scores = [
-            self.mapping.get(x.lower(), 0) for x in scores
-        ]
+        scores = [self.mapping.get(x.lower(), 0) for x in scores]
         return [
             {
                 "qid": qid,
@@ -422,7 +412,9 @@ class NuggetAssigner(pt.Transformer):
         prompt (PromptTransformer): Configured prompt transformation pipeline
     """
 
-    system_message: str = "You are NuggetizeAssignerLLM, an intelligent assistant that can label a list of atomic nuggets based on if they are captured by a given passage."
+    system_message: str = (
+        "You are NuggetizeAssignerLLM, an intelligent assistant that can label a list of atomic nuggets based on if they are captured by a given passage."
+    )
 
     def __init__(
         self,
@@ -453,7 +445,11 @@ class NuggetAssigner(pt.Transformer):
         self.__post_init__()
 
     def __post_init__(self):
-        instruction = ASSIGNER_GRADE_2_PROMPT_STRING if self.mode == NuggetAssignMode.SUPPORT_GRADE_2 else ASSIGNER_GRADE_3_PROMPT_STRING
+        instruction = (
+            ASSIGNER_GRADE_2_PROMPT_STRING
+            if self.mode == NuggetAssignMode.SUPPORT_GRADE_2
+            else ASSIGNER_GRADE_3_PROMPT_STRING
+        )
         self.prompt = PromptTransformer(
             instruction=make_callable_template(instruction),
             system_message=self.system_message,
@@ -505,15 +501,13 @@ class NuggetAssigner(pt.Transformer):
             prompt = [self.prompt.create_prompt(**context)]
             output = self.nuggetizer.generate(prompt)[0]
             scores.extend(self.prompt.answer_extraction(output))
-        scores = [
-            self.mapping.get(x.lower(), 0) for x in scores
-        ]
+        scores = [self.mapping.get(x.lower(), 0) for x in scores]
         n = len(scores)
         return [
             {
-                "qid": [qid]*n,
-                self.query_field: [query]*n,
-                self.answer_field: [qanswer]*n,
+                "qid": [qid] * n,
+                self.query_field: [query] * n,
+                self.answer_field: [qanswer] * n,
                 f"{self.nugget_field}_id": nugget_ids,
                 self.nugget_field: nuggets,
                 self.score_field: importance,

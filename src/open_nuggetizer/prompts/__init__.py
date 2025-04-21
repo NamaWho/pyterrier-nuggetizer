@@ -10,5 +10,5 @@ __all__ = [
     "CREATOR_PROMPT_STRING",
     "SCORER_PROMPT_STRING",
     "render_prompt",
-    "make_callable_template"
+    "make_callable_template",
 ]
