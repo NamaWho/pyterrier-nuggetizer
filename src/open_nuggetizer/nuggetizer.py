@@ -235,6 +235,9 @@ class NuggetCreator(pt.Transformer):
         self.max_nuggets = nuggetizer.max_nuggets
         self.verbose = verbose if verbose is not None else nuggetizer.verbose
 
+        self.__post_init__()
+
+    def __post_init__(self):
         self.prompt = PromptTransformer(
             instruction=CREATOR_PROMPT_STRING,
             system_message=self.system_message,
@@ -348,6 +351,9 @@ class NuggetScorer(pt.Transformer):
 
         self.verbose = verbose if verbose is not None else nuggetizer.verbose
 
+        self.__post_init__()
+
+    def __post_init__(self):
         self.prompt = PromptTransformer(
             instruction=SCORER_PROMPT_STRING,
             system_message=self.system_message,
@@ -443,6 +449,9 @@ class NuggetAssigner(pt.Transformer):
 
         self.verbose = verbose if verbose is not None else nuggetizer.verbose
 
+        self.__post_init__()
+
+    def __post_init__(self):
         instruction = ASSIGNER_GRADE_2_PROMPT_STRING if self.mode == NuggetAssignMode.SUPPORT_GRADE_2 else ASSIGNER_GRADE_3_PROMPT_STRING
         self.prompt = PromptTransformer(
             instruction=instruction,
