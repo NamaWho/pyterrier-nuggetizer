@@ -16,4 +16,11 @@ def render_prompt(template: Template, context: Dict[str, Any]) -> str:
     return template.render(**context)
 
 
-__all__ = ["render_prompt"]
+def make_callable_template(template: Template):
+    def template_call(**kwargs):
+        return template.render(**kwargs)
+
+    return template_call
+
+
+__all__ = ["render_prompt", "make_callable_template"]

@@ -13,6 +13,7 @@ from open_nuggetizer.prompts import (
     SCORER_PROMPT_STRING,
     ASSIGNER_GRADE_2_PROMPT_STRING,
     ASSIGNER_GRADE_3_PROMPT_STRING,
+    make_callable_template
 )
 from open_nuggetizer.util import iter_windows, extract_list
 
@@ -239,7 +240,7 @@ class NuggetCreator(pt.Transformer):
 
     def __post_init__(self):
         self.prompt = PromptTransformer(
-            instruction=CREATOR_PROMPT_STRING,
+            instruction=make_callable_template(CREATOR_PROMPT_STRING),
             system_message=self.system_message,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
@@ -355,7 +356,7 @@ class NuggetScorer(pt.Transformer):
 
     def __post_init__(self):
         self.prompt = PromptTransformer(
-            instruction=SCORER_PROMPT_STRING,
+            instruction=make_callable_template(SCORER_PROMPT_STRING),
             system_message=self.system_message,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
@@ -454,7 +455,7 @@ class NuggetAssigner(pt.Transformer):
     def __post_init__(self):
         instruction = ASSIGNER_GRADE_2_PROMPT_STRING if self.mode == NuggetAssignMode.SUPPORT_GRADE_2 else ASSIGNER_GRADE_3_PROMPT_STRING
         self.prompt = PromptTransformer(
-            instruction=instruction,
+            instruction=make_callable_template(instruction),
             system_message=self.system_message,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
