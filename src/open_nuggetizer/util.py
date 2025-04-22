@@ -2,7 +2,7 @@ from tqdm import tqdm
 import re
 import pandas as pd
 import ast
-from typing import List
+from typing import List, Optional, Iterator, Tuple
 
 def extract_list(text: str) -> List[str]:
     """
@@ -22,11 +22,16 @@ def extract_list(text: str) -> List[str]:
     except Exception as _:
         raise ValueError("No valid Python list found in response.")
 
+
 def iter_windows(
-    n: int, window_size: int, stride: int, verbose: bool = False, desc: str = None
-):
+    n: int,
+    window_size: int,
+    stride: int,
+    verbose: bool = False,
+    desc: Optional[str] = None
+) -> Iterator[Tuple[int, int, int]]:
     """
-    Iterates over windows of a given size and stride.
+    Iterates over windows of a given size and stride, in reverse order.
 
     Args:
         n (int): The total number of elements.
@@ -47,14 +52,22 @@ def iter_windows(
     if stride > window_size:
         raise ValueError("Stride must be less than or equal to window size.")
 
+    # Compute the last full‐window start
+    max_start = ((n - window_size) // stride) * stride
+
     for start_idx in tqdm(
-        range((n // stride) * stride, -1, -stride, desc=desc, disable=verbose),
-        unit="window",
+        range(max_start, -1, -stride),
+        desc=desc,
+        disable=not verbose,
+        unit="window"
     ):
         end_idx = start_idx + window_size
+        # if we somehow overshoot (shouldn't), cap at n
         if end_idx > n:
             end_idx = n
         window_len = end_idx - start_idx
+
+        # always include the very first window, otherwise only if it’s not just a tiny remainder
         if start_idx == 0 or window_len > stride:
             yield start_idx, end_idx, window_len
 

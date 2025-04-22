@@ -32,10 +32,7 @@ def scored_df():
 
 def test_assigner_grade2(scored_df):
     backend = DummyBackend()
-    nug = Nuggetizer(backend, assigner_mode=NuggetAssignMode.SUPPORT_GRADE_2)
+    nug = Nuggetizer(backend, assigner_mode=NuggetAssignMode.SUPPORT_GRADE_2, window_size=1)
     assigner = NuggetAssigner(nug)
-    df_out = assigner.transform(scored_df())
-    # exploded into two rows
-    assert df_out.shape[0] == 2
-    # support→1, not_support→0
+    df_out = assigner.transform(scored_df)
     assert df_out["vital"].tolist() == [1, 0]

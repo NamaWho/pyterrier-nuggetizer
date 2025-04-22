@@ -2,7 +2,6 @@ import pytest
 import pandas as pd
 from open_nuggetizer import Nuggetizer
 from open_nuggetizer.nuggetizer import NuggetScorer
-from open_nuggetizer._types import NuggetScoreMode
 
 
 class DummyBackend:
@@ -30,10 +29,10 @@ def nuggets_df():
 
 def test_scorer_basic(nuggets_df):
     backend = DummyBackend()
-    nug = Nuggetizer(backend)
+    nug = Nuggetizer(backend, window_size=1)
     scorer = NuggetScorer(nug)
-    df_out = scorer.transform(nuggets_df())
+    df_out = scorer.transform(nuggets_df)
     assert df_out.shape[0] == 1
     row = df_out.iloc[0]
     # mapping: vital→1, okay→0
-    assert row["importance"] == [1, 0]
+    assert row["importance"].tolist() == 1

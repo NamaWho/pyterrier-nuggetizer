@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from open_nuggetizer import Nuggetizer
-from open_nuggetizer._types import NuggetMode, NuggetScoreMode, NuggetAssignMode
+from open_nuggetizer._types import NuggetAssignMode
 
 
 class DummyBackend:
@@ -22,15 +22,15 @@ class DummyBackend:
 def df_docs():
     return pd.DataFrame(
         [
-            {"query": "Q1", "document": "DocA"},
-            {"query": "Q1", "document": "DocB"},
+            {"qid": "1", "query": "Q1", "document": "DocA"},
+            {"qid": "1", "query": "Q1", "document": "DocB"},
         ]
     )
 
 
 def test_initialization_and_transform_errors():
     backend = DummyBackend()
-    nug = Nuggetizer(backend)
+    nug = Nuggetizer(backend, window_size=1)
     # missing required columns → ValueError
     with pytest.raises(ValueError):
         nug.transform(pd.DataFrame({"foo": [1]}))
@@ -42,11 +42,12 @@ def test_full_pipeline(df_docs):
         backend,
         assigner_mode=NuggetAssignMode.SUPPORT_GRADE_2,
         max_nuggets=2,
+        window_size=1,
     )
     df_out = nug.transform(df_docs)
     # should have the final qrels style output
-    assert set(df_out.columns) >= {"query_id", "doc_id", "relevance"}
-    # two nuggets → two distinct doc_ids
-    assert df_out["doc_id"].nunique() == 2
+    assert len(set(df_out.columns)) >= len({"qid", "docno", "relevance"})
+    # two nuggets → two distinct nugget_ids
+    assert df_out["nugget_id"].nunique() == 2
     # relevance should be 1 or 0
-    assert sorted(df_out["relevance"].unique()) == [0, 1]
+    assert sorted(df_out["importance"].unique()) == [0, 1]

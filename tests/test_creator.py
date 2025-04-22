@@ -2,7 +2,6 @@ import pytest
 import pandas as pd
 from open_nuggetizer import Nuggetizer
 from open_nuggetizer.nuggetizer import NuggetCreator
-from open_nuggetizer._types import NuggetMode
 
 
 class DummyBackend:
@@ -21,11 +20,12 @@ def simple_df():
 
 def test_creator_basic(simple_df):
     backend = DummyBackend()
-    nug = Nuggetizer(backend, max_nuggets=2)
+    nug = Nuggetizer(backend, max_nuggets=2, window_size=1)
     creator = NuggetCreator(nug)
     df_out = creator.transform(simple_df)
     # one row per query
-    assert df_out.shape[0] == 1
+    print(df_out)
+    assert df_out.shape[0] == 2
     row = df_out.iloc[0]
-    assert row["nugget"] == ["alpha", "beta"]
-    assert row["nugget_id"] == ["Q1_1", "Q1_2"]
+    assert df_out["nugget"].tolist() == ["alpha", "beta"]
+    assert df_out["nugget_id"].tolist() == ["Q1_1", "Q1_2"]

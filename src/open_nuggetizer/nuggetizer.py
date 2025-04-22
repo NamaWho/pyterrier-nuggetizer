@@ -4,7 +4,7 @@ import logging
 import pyterrier as pt
 import pyterrier_alpha as pta
 from pyterrier_rag.prompt import PromptTransformer
-from pyterrier_rag import Backend
+from pyterrier_rag.backend import Backend
 import pandas as pd
 
 from open_nuggetizer._types import NuggetAssignMode
@@ -16,6 +16,7 @@ from open_nuggetizer.prompts import (
     make_callable_template,
 )
 from open_nuggetizer.util import iter_windows, extract_list
+
 
 class Nuggetizer(pt.Transformer):
     """
@@ -100,7 +101,7 @@ class Nuggetizer(pt.Transformer):
 
     def __repr__(self):
         return f"Nuggetizer(backend={self.backend}, assigner_mode={self.assigner_mode}, window_size={self.window_size}, max_nuggets={self.max_nuggets})"
-    
+
     def generate(self, inp: Iterable[str]):
         return self.backend.generate(inp)
 
@@ -255,7 +256,7 @@ class NuggetCreator(pt.Transformer):
         inp = list(inp)
         qid = inp[0].get("qid", None)
         query = inp[0][self.query_field]
-        documents = inp[self.document_field]
+        documents = [i[self.document_field] for i in inp]
 
         nuggets: List[str] = []
 
@@ -272,7 +273,7 @@ class NuggetCreator(pt.Transformer):
                 self.nugget_field: nuggets,
                 "max_nuggets": self.max_nuggets,
             }
-            prompt = [self.prompt.create_prompt(**context)]
+            prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
             nuggets = self.prompt.answer_extraction(output)[: self.max_nuggets]
 
@@ -280,11 +281,9 @@ class NuggetCreator(pt.Transformer):
             {
                 "qid": qid,
                 self.query_field: query,
-                f"{self.nugget_field}_id": [
-                    f"{qid}_{i+1}" for i in range(len(nuggets))
-                ],
-                self.nugget_field: nuggets,
-            }
+                f"{self.nugget_field}_id": f"{qid}_{i+1}",
+                self.nugget_field: nugget,
+            } for i, nugget in enumerate(nuggets)
         ]
 
 
@@ -362,8 +361,8 @@ class NuggetScorer(pt.Transformer):
         inp = list(inp)
         qid = inp[0].get("qid", None)
         query = inp[0][self.query_field]
-        nugget_ids = inp[f"{self.nugget_field}_id"]
-        nuggets = inp[self.nugget_field]
+        nugget_ids = [i[f"{self.nugget_field}_id"] for i in inp]
+        nuggets = [i[self.nugget_field] for i in inp]
 
         scores: List[str] = []
 
@@ -378,18 +377,19 @@ class NuggetScorer(pt.Transformer):
                 self.query_field: query,
                 self.nugget_field: context_string,
             }
-            prompt = [self.prompt.create_prompt(**context)]
+            prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
             scores.extend(self.prompt.answer_extraction(output))
         scores = [self.mapping.get(x.lower(), 0) for x in scores]
+
         return [
             {
                 "qid": qid,
                 self.query_field: query,
-                f"{self.nugget_field}_id": nugget_ids,
-                self.nugget_field: nuggets,
-                self.score_field: scores,
-            }
+                f"{self.nugget_field}_id": idx,
+                self.nugget_field: nugget,
+                self.score_field: score,
+            } for idx, nugget, score in zip(nugget_ids, nuggets, scores)
         ]
 
 
@@ -479,9 +479,9 @@ class NuggetAssigner(pt.Transformer):
         qid = inp[0].get("qid", None)
         query = inp[0][self.query_field]
         qanswer = inp[0][self.answer_field]
-        nugget_ids = inp[f"{self.nugget_field}_id"]
-        nuggets = inp[self.nugget_field]
-        importance = inp[self.score_field]
+        nugget_ids = [i[f"{self.nugget_field}_id"] for i in inp]
+        nuggets = [i[self.nugget_field] for i in inp]
+        importance = [i[self.score_field] for i in inp]
 
         scores: List[str] = []
 
@@ -494,21 +494,21 @@ class NuggetAssigner(pt.Transformer):
                 "nuggets": current_nuggets,
                 "context": qanswer,
             }
-            prompt = [self.prompt.create_prompt(**context)]
+            prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
             scores.extend(self.prompt.answer_extraction(output))
         scores = [self.mapping.get(x.lower(), 0) for x in scores]
-        n = len(scores)
+
         return [
             {
-                "qid": [qid] * n,
-                self.query_field: [query] * n,
-                self.answer_field: [qanswer] * n,
-                f"{self.nugget_field}_id": nugget_ids,
-                self.nugget_field: nuggets,
-                self.score_field: importance,
-                self.vital_field: scores,
-            }
+                "qid": qid,
+                self.query_field: query,
+                self.answer_field: qanswer,
+                f"{self.nugget_field}_id": idx,
+                self.nugget_field: nugget,
+                self.score_field: important,
+                self.vital_field: score,
+            } for idx, nugget, important, score in zip(nugget_ids, nuggets, importance, scores)
         ]
 
 
