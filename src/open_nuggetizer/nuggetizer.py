@@ -99,6 +99,9 @@ class Nuggetizer(pt.Transformer):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO if self.verbose else logging.WARNING)
 
+    def __repr__(self):
+        return f"Nuggetizer(backend={self.backend}, creator_mode={self.creator_mode}, scorer_mode={self.scorer_mode}, assigner_mode={self.assigner_mode}, window_size={self.window_size}, max_nuggets={self.max_nuggets})"
+    
     def generate(self, inp: Iterable[str]):
         return self.backend.generate(inp)
 
