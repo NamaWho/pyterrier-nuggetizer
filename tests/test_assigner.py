@@ -14,19 +14,18 @@ class DummyBackend:
         return ['["support", "not_support"]']
 
 
+
 @pytest.fixture
 def scored_df():
     return pd.DataFrame(
-        [
-            {
-                "qid": "Q1",
-                "query": "test",
-                "qanswer": "ans",
-                "nugget_id": ["Q1_1", "Q1_2"],
-                "nugget": ["n1", "n2"],
-                "importance": [1, 0],
-            }
-        ]
+        {
+            "qid":       ["Q1",    "Q1"],
+            "query":     ["test",  "test"],
+            "qanswer":   ["ans",   "ans"],
+            "nugget_id": ["Q1_1",  "Q1_2"],
+            "nugget":    ["n1",    "n2"],
+            "importance":[1,       0],
+        }
     )
 
 
