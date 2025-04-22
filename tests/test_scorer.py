@@ -30,7 +30,7 @@ def nuggets_df():
 
 def test_scorer_basic(nuggets_df):
     backend = DummyBackend()
-    nug = Nuggetizer(backend, scorer_mode=NuggetScoreMode.VITAL_OKAY)
+    nug = Nuggetizer(backend)
     scorer = NuggetScorer(nug)
     df_out = scorer.transform(nuggets_df())
     assert df_out.shape[0] == 1

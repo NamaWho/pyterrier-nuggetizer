@@ -13,7 +13,6 @@ class NuggetMetrics:
     strict_all_score: float
     all_score: float
 
-
 def calculate_nugget_scores(qid: str, nuggets: List[Dict]) -> NuggetMetrics:
     """
     Calculate various nugget scores for a single response.

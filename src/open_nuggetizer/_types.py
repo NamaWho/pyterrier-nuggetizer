@@ -1,14 +1,14 @@
 from enum import Enum
 
 
-class NuggetMode(Enum):
-    ATOMIC = "atomic"
-    NOUN_PHRASE = "noun_phrase"
-    QUESTION = "question"
+# class NuggetMode(Enum):
+#     ATOMIC = "atomic"
+#     NOUN_PHRASE = "noun_phrase"
+#     QUESTION = "question"
 
 
-class NuggetScoreMode(Enum):
-    VITAL_OKAY = "vital_okay"
+# class NuggetScoreMode(Enum):
+#     VITAL_OKAY = "vital_okay"
 
 
 class NuggetAssignMode(Enum):

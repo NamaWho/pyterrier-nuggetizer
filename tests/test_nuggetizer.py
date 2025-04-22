@@ -40,8 +40,6 @@ def test_full_pipeline(df_docs):
     backend = DummyBackend()
     nug = Nuggetizer(
         backend,
-        creator_mode=NuggetMode.ATOMIC,
-        scorer_mode=NuggetScoreMode.VITAL_OKAY,
         assigner_mode=NuggetAssignMode.SUPPORT_GRADE_2,
         max_nuggets=2,
     )

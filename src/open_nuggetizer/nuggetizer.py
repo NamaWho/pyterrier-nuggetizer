@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, List, Set
+from typing import Optional, Iterable, List, Set, Dict
 import logging
 
 import pyterrier as pt
@@ -17,32 +17,33 @@ from open_nuggetizer.prompts import (
 )
 from open_nuggetizer.util import iter_windows, extract_list
 
-
 class Nuggetizer(pt.Transformer):
     """
     A pipeline component that generates and scores information nuggets
     relevant to a query using a large language model (LLM).
 
     Parameters:
-        backend (backend): Language model instance with generate capability
-        creator_mode (NuggetMode): Strategy for nugget creation (atomic/noun-phrase/question)
-        scorer_mode (NuggetScoreMode): Grading of nugget storing (2 / 3)
-        window_size (int, optional): Global window size for document/nugget processing
-        creator_window_size (int): Documents per window for creation phase
-        scorer_window_size (int): Nuggets per window for scoring phase
-        max_nuggets (int): Maximum nuggets to generate per query
-        query_field (str): DataFrame column containing queries
-        document_field (str): DataFrame column containing documents
-        nugget_field (str): Output column for generated nuggets
-        score_field (str): Output column for importance scores
-        verbose (bool): Enable verbose logging
+        backend (Backend): The LLM backend to use for nugget generation and scoring.
+        assigner_mode (NuggetAssignMode): Mode for nugget assignment strategy.
+        window_size (int, optional): Size of the document processing window.
+        creator_window_size (int, optional): Size of the nugget creation window.
+        scorer_window_size (int, optional): Size of the nugget scoring window.
+        assigner_window_size (int, optional): Size of the nugget assignment window.
+        max_nuggets (int, optional): Maximum number of nuggets to generate.
+        query_field (str, optional): Name of the query field in input DataFrame.
+        document_field (str, optional): Name of the document field in input DataFrame.
+        answer_field (str, optional): Name of the answer field in input DataFrame.
+        nugget_field (str, optional): Name of the nugget field in output DataFrame.
+        score_field (str, optional): Name of the score field in output DataFrame.
+        vital_field (str, optional): Name of the vitalness field in output DataFrame.
+        verbose (bool, optional): Whether to enable verbose logging.
     """
 
     def __init__(
         self,
         backend: Backend,
-        creator_mode: NuggetMode = NuggetMode.ATOMIC,
-        scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
+        # creator_mode: NuggetMode = NuggetMode.ATOMIC,
+        # scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
         assigner_mode: NuggetAssignMode = NuggetAssignMode.SUPPORT_GRADE_2,
         window_size: Optional[int] = None,
         creator_window_size: Optional[int] = 10,
@@ -72,8 +73,6 @@ class Nuggetizer(pt.Transformer):
         ), "assigner_window_size must be an integer"
 
         self.backend = backend
-        self.creator_mode = creator_mode
-        self.scorer_mode = scorer_mode
         self.assigner_mode = assigner_mode
         self.window_size = window_size
         self.creator_window_size = creator_window_size
@@ -100,7 +99,7 @@ class Nuggetizer(pt.Transformer):
         self.logger.setLevel(logging.INFO if self.verbose else logging.WARNING)
 
     def __repr__(self):
-        return f"Nuggetizer(backend={self.backend}, creator_mode={self.creator_mode}, scorer_mode={self.scorer_mode}, assigner_mode={self.assigner_mode}, window_size={self.window_size}, max_nuggets={self.max_nuggets})"
+        return f"Nuggetizer(backend={self.backend}, assigner_mode={self.assigner_mode}, window_size={self.window_size}, max_nuggets={self.max_nuggets})"
     
     def generate(self, inp: Iterable[str]):
         return self.backend.generate(inp)
@@ -208,7 +207,6 @@ class NuggetCreator(pt.Transformer):
     def __init__(
         self,
         nuggetizer: Nuggetizer,
-        mode: NuggetMode = None,
         window_size: Optional[int] = None,
         verbose: bool = None,
     ):
@@ -221,7 +219,6 @@ class NuggetCreator(pt.Transformer):
         ), "window_size must be an integer"
 
         self.nuggetizer = nuggetizer
-        self.mode = mode if mode else nuggetizer.creator_mode
         self.window_size = (
             window_size if window_size else nuggetizer.creator_window_size
         )
@@ -321,7 +318,6 @@ class NuggetScorer(pt.Transformer):
     def __init__(
         self,
         nuggetizer: Nuggetizer,
-        mode: NuggetScoreMode = None,
         window_size: Optional[int] = None,
         max_nuggets: Optional[int] = None,
         verbose: bool = None,
@@ -338,7 +334,6 @@ class NuggetScorer(pt.Transformer):
         ), "max_nuggets must be an integer"
 
         self.nuggetizer = nuggetizer
-        self.mode = mode if mode else nuggetizer.scorer_mode
         self.window_size = window_size if window_size else nuggetizer.scorer_window_size
         self.max_nuggets = max_nuggets if max_nuggets else nuggetizer.max_nuggets
         self.query_field = nuggetizer.query_field
@@ -435,8 +430,8 @@ class NuggetAssigner(pt.Transformer):
         ), "window_size must be an integer"
 
         self.nuggetizer = nuggetizer
-        self.mode = mode if mode else nuggetizer.scorer_mode
-        self.window_size = window_size if window_size else nuggetizer.scorer_window_size
+        self.mode = mode if mode else nuggetizer.assigner_mode
+        self.window_size = window_size if window_size else nuggetizer.assigner_window_size
         self.query_field = nuggetizer.query_field
         self.nugget_field = nuggetizer.nugget_field
         self.score_field = nuggetizer.score_field
