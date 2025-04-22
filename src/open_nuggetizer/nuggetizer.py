@@ -7,7 +7,7 @@ from pyterrier_rag.prompt import PromptTransformer
 from pyterrier_rag import Backend
 import pandas as pd
 
-from open_nuggetizer._types import NuggetMode, NuggetScoreMode, NuggetAssignMode
+from open_nuggetizer._types import NuggetAssignMode
 from open_nuggetizer.prompts import (
     CREATOR_PROMPT_STRING,
     SCORER_PROMPT_STRING,
@@ -191,7 +191,6 @@ class NuggetCreator(pt.Transformer):
 
     Parameters:
         nuggetizer (Nuggetizer): Parent nuggetizer instance
-        mode (NuggetMode): Override for nugget creation strategy
         window_size (int, optional): Override for document processing window size
         verbose (bool, optional): Override for verbose logging
 
@@ -295,7 +294,6 @@ class NuggetScorer(pt.Transformer):
 
     Parameters:
         nuggetizer (Nuggetizer): Parent nuggetizer instance
-        mode (NuggetScoreMode): Override for scoring strategy
         window_size (int, optional): Override for nugget processing window size
         max_nuggets (int, optional): Override for maximum nuggets to process
         verbose (bool, optional): Override for verbose logging

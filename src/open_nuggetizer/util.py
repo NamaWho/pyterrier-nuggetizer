@@ -4,8 +4,16 @@ import pandas as pd
 import ast
 from typing import List
 
-
 def extract_list(text: str) -> List[str]:
+    """
+    Extracts the first list-like structure from a string.
+    
+    Args:
+        text (str): The input string containing a list-like structure.
+        
+    Returns:
+        List[str]: The extracted list.
+    """
     try:
         # Use regex to find the first occurrence of a list-like structure
         match = re.search(r"\[[^\[\]]+\]", text, re.DOTALL)
@@ -14,10 +22,31 @@ def extract_list(text: str) -> List[str]:
     except Exception as _:
         raise ValueError("No valid Python list found in response.")
 
-
 def iter_windows(
     n: int, window_size: int, stride: int, verbose: bool = False, desc: str = None
 ):
+    """
+    Iterates over windows of a given size and stride.
+
+    Args:
+        n (int): The total number of elements.
+        window_size (int): The size of each window.
+        stride (int): The stride for moving the window.
+        verbose (bool): If True, show progress bar.
+        desc (str): Description for the progress bar.
+
+    Yields:
+        Tuple[int, int, int]: Start index, end index, and window length.
+    """
+    if window_size <= 0:
+        raise ValueError("Window size must be greater than 0.")
+    if stride <= 0:
+        raise ValueError("Stride must be greater than 0.")
+    if window_size > n:
+        raise ValueError("Window size must be less than or equal to n.")
+    if stride > window_size:
+        raise ValueError("Stride must be less than or equal to window size.")
+
     for start_idx in tqdm(
         range((n // stride) * stride, -1, -stride, desc=desc, disable=verbose),
         unit="window",
@@ -29,8 +58,14 @@ def iter_windows(
         if start_idx == 0 or window_len > stride:
             yield start_idx, end_idx, window_len
 
-
 def save_nuggets(nuggets: pd.DataFrame, file: str) -> None:
+    """
+    Save nuggets to a file in TSV format.
+
+    Args:
+        nuggets (pd.DataFrame): DataFrame containing nuggets.
+        file (str): Path to the output file.
+    """
     essential = ["qid", "nugget_id", "nugget"]
     optional = ["importance", "assignment"]
     columns = nuggets.columns
@@ -46,8 +81,16 @@ def save_nuggets(nuggets: pd.DataFrame, file: str) -> None:
     nuggets = nuggets[essential + optional]
     nuggets.to_csv(file, sep="\t", index=False, header=False)
 
-
 def load_nuggets(file: str) -> pd.DataFrame:
+    """
+    Load nuggets from a TSV file.
+
+    Args:
+        file (str): Path to the input file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing nuggets.
+    """
     essential = ["qid", "nugget_id", "nugget", "importance", "assignment"]
     nuggets = pd.read_csv(file, sep="\t", index_col=False, names=essential)
 
