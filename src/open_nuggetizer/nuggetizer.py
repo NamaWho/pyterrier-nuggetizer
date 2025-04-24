@@ -15,6 +15,7 @@ from open_nuggetizer.prompts import (
     ASSIGNER_GRADE_3_PROMPT_STRING,
     make_callable_template,
 )
+from open_nuggetizer._measure import measure_factory
 from open_nuggetizer.util import iter_windows, extract_list
 
 
@@ -129,6 +130,12 @@ class Nuggetizer(pt.Transformer):
         else:
             return self.score(inp)
 
+    def __getattr__(self, attr: str):
+        measure = measure_factory(attr, self)
+        if measure is not None:
+            return measure
+        return self.__getattribute__(attr)
+
     def make_qrels(self, run: pd.DataFrame, nuggets: pd.DataFrame) -> pd.DataFrame:
         # 1) validate inputs
         required_run: Set[str] = {self.query_field, self.answer_field}
@@ -178,6 +185,7 @@ class Nuggetizer(pt.Transformer):
             )
 
         assigned["relevance"] = assigned[self.vital_field].map(to_rel)
+        assigned = assigned.rename(columns={'nugget_id': 'doc_id'})
 
         # 6) produce standard qrels: query_id, doc_id, relevance
         qrels = assigned.rename(

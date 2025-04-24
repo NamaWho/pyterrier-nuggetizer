@@ -2,7 +2,7 @@ import ir_measures
 from ir_measures.providers.cwl_eval import CwlEvaluator
 from .nuggetizer import Nuggetizer
 
-SUPPORTED_MEASURES = {"SDCG", "P", "RBP"}
+SUPPORTED_MEASURES = {"P", "R"}
 
 def measure_factory(attr: str, nuggetizer_provider: Nuggetizer):
     """
