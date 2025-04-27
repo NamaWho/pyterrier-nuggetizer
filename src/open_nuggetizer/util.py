@@ -56,7 +56,7 @@ def iter_windows(
 
     if window_size > n:
         # entire input fits in one window
-        yield 0, n
+        yield 0, n, n
     else:
         for start_idx in tqdm(
             range(max_start, -1, -stride),
