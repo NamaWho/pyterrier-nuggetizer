@@ -375,7 +375,7 @@ class NuggetScorer(pt.Transformer):
         scores: List[str] = []
 
         for start, end, _ in iter_windows(
-            len(nuggets), self.window_size, self.window_size, verbose=self.verbose
+            len(nuggets), min(self.window_size, len(nuggets)), min(self.window_size, len(nuggets)), verbose=self.verbose
         ):
             current_nuggets = nuggets[start:end]
             context_string = "\n".join(
@@ -387,7 +387,7 @@ class NuggetScorer(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            scores.extend(self.prompt.answer_extraction(output))
+            scores.extend(self.prompt.answer_extraction(output.text))
         scores = [self.mapping.get(x.lower(), 0) for x in scores]
 
         return [
@@ -494,7 +494,7 @@ class NuggetAssigner(pt.Transformer):
         scores: List[str] = []
 
         for start, end, _ in iter_windows(
-            len(nuggets), self.window_size, self.window_size, verbose=self.verbose
+            len(nuggets), min(self.window_size, len(nuggets)), min(self.window_size, len(nuggets)), verbose=self.verbose
         ):
             current_nuggets = nuggets[start:end]
             context = {

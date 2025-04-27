@@ -19,6 +19,7 @@ def extract_list(text: str) -> List[str]:
         match = re.search(r"\[[^\[\]]+\]", text, re.DOTALL)
         if match:
             return ast.literal_eval(match.group(0))
+        return []
     except Exception as _:
         raise ValueError("No valid Python list found in response.")
 
