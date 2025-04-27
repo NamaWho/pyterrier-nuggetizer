@@ -269,7 +269,7 @@ class NuggetCreator(pt.Transformer):
         nuggets: List[str] = []
 
         for start, end, _ in iter_windows(
-            len(documents), self.window_size, self.window_size, verbose=self.verbose
+            len(documents), min(self.window_size, len(documents)), min(self.window_size, len(documents)), verbose=self.verbose
         ):
             current_documents = documents[start:end]
             context_string = "\n".join(
