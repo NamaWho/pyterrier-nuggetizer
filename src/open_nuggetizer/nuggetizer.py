@@ -269,7 +269,7 @@ class NuggetCreator(pt.Transformer):
         nuggets: List[str] = []
 
         for start, end, _ in iter_windows(
-            len(documents), min(self.window_size, len(documents)), min(self.window_size, len(documents)), verbose=self.verbose
+            len(documents), self.window_size, self.window_size, verbose=self.verbose
         ):
             current_documents = documents[start:end]
             context_string = "\n".join(
@@ -375,7 +375,7 @@ class NuggetScorer(pt.Transformer):
         scores: List[str] = []
 
         for start, end, _ in iter_windows(
-            len(nuggets), min(self.window_size, len(nuggets)), min(self.window_size, len(nuggets)), verbose=self.verbose
+            len(nuggets), self.window_size, self.window_size, verbose=self.verbose
         ):
             current_nuggets = nuggets[start:end]
             context_string = "\n".join(
@@ -494,7 +494,7 @@ class NuggetAssigner(pt.Transformer):
         scores: List[str] = []
 
         for start, end, _ in iter_windows(
-            len(nuggets), min(self.window_size, len(nuggets)), min(self.window_size, len(nuggets)), verbose=self.verbose
+            len(nuggets), self.window_size, self.window_size, verbose=self.verbose
         ):
             current_nuggets = nuggets[start:end]
             context = {

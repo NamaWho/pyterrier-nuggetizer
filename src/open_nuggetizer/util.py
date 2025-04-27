@@ -48,29 +48,31 @@ def iter_windows(
         raise ValueError("Window size must be greater than 0.")
     if stride <= 0:
         raise ValueError("Stride must be greater than 0.")
-    if window_size > n:
-        raise ValueError("Window size must be less than or equal to n.")
     if stride > window_size:
         raise ValueError("Stride must be less than or equal to window size.")
 
     # Compute the last full‐window start
     max_start = ((n - window_size) // stride) * stride
 
-    for start_idx in tqdm(
-        range(max_start, -1, -stride),
-        desc=desc,
-        disable=not verbose,
-        unit="window"
-    ):
-        end_idx = start_idx + window_size
-        # if we somehow overshoot (shouldn't), cap at n
-        if end_idx > n:
-            end_idx = n
-        window_len = end_idx - start_idx
+    if window_size > n:
+        # entire input fits in one window
+        yield 0, n
+    else:
+        for start_idx in tqdm(
+            range(max_start, -1, -stride),
+            desc=desc,
+            disable=not verbose,
+            unit="window"
+        ):
+            end_idx = start_idx + window_size
+            # if we somehow overshoot (shouldn't), cap at n
+            if end_idx > n:
+                end_idx = n
+            window_len = end_idx - start_idx
 
-        # always include the very first window, otherwise only if it’s not just a tiny remainder
-        if start_idx == 0 or window_len > stride:
-            yield start_idx, end_idx, window_len
+            # always include the very first window, otherwise only if it’s not just a tiny remainder
+            if start_idx == 0 or window_len > stride:
+                yield start_idx, end_idx, window_len
 
 def save_nuggets(nuggets: pd.DataFrame, file: str) -> None:
     """
