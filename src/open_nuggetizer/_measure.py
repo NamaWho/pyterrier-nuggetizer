@@ -1,10 +1,9 @@
 import ir_measures
 from ir_measures.providers.cwl_eval import CwlEvaluator
-from .nuggetizer import Nuggetizer
 
 SUPPORTED_MEASURES = {"P", "R"}
 
-def measure_factory(attr: str, nuggetizer_provider: Nuggetizer):
+def measure_factory(attr: str, nuggetizer_provider: 'open_nuggetizer.Nuggetizer'):
     """
     Factory function to create a measure based on the provided attribute and nuggetizer provider.
 
