@@ -53,7 +53,7 @@ class Nuggetizer(pt.Transformer):
         assigner_window_size: Optional[int] = 10,
         max_nuggets: Optional[int] = 30,
         query_field: Optional[str] = "query",
-        document_field: Optional[str] = "document",
+        document_field: Optional[str] = "text",
         answer_field: Optional[str] = "qanswer",
         nugget_field: Optional[str] = "nugget",
         score_field: Optional[str] = "importance",
