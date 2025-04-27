@@ -283,7 +283,7 @@ class NuggetCreator(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            nuggets = self.prompt.answer_extraction(output)[: self.max_nuggets]
+            nuggets = self.prompt.answer_extraction(output.text)[: self.max_nuggets]
 
         return [
             {
