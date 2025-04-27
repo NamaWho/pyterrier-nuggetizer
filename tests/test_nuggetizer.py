@@ -3,6 +3,7 @@ import pandas as pd
 from open_nuggetizer import Nuggetizer
 from open_nuggetizer._types import NuggetAssignMode
 
+from types import SimpleNamespace
 
 class DummyBackend:
     def __init__(self):
@@ -11,19 +12,19 @@ class DummyBackend:
     def generate(self, prompts):
         text = prompts[0]
         if "NuggetizeLLM" in text:
-            return ['["nugget1", "nugget2"]']
+            return [SimpleNamespace(text='["nugget1", "nugget2"]')]
         elif "NuggetizeScoreLLM" in text:
-            return ['["vital", "okay"]']
+            return [SimpleNamespace(text='["vital", "okay"]')]
         else:
-            return ['["support", "not_support"]']
+            return [SimpleNamespace(text='["support", "not_support"]')]
 
 
 @pytest.fixture
 def df_docs():
     return pd.DataFrame(
         [
-            {"qid": "1", "query": "Q1", "document": "DocA"},
-            {"qid": "1", "query": "Q1", "document": "DocB"},
+            {"qid": "1", "query": "Q1", "text": "DocA"},
+            {"qid": "1", "query": "Q1", "text": "DocB"},
         ]
     )
 

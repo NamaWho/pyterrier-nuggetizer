@@ -3,6 +3,7 @@ import pandas as pd
 from open_nuggetizer import Nuggetizer
 from open_nuggetizer.nuggetizer import NuggetScorer
 
+from types import SimpleNamespace
 
 class DummyBackend:
     def __init__(self):
@@ -10,7 +11,7 @@ class DummyBackend:
 
     def generate(self, prompts):
         # always label two nuggets
-        return ['["vital", "okay"]']
+        return [SimpleNamespace(text='["vital", "okay"]')]
 
 
 @pytest.fixture

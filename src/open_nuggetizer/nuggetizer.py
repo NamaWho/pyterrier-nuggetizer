@@ -36,8 +36,8 @@ class Nuggetizer(pt.Transformer):
         document_field (str, optional): Name of the document field in input DataFrame.
         answer_field (str, optional): Name of the answer field in input DataFrame.
         nugget_field (str, optional): Name of the nugget field in output DataFrame.
-        score_field (str, optional): Name of the score field in output DataFrame.
-        vital_field (str, optional): Name of the vitalness field in output DataFrame.
+        importance_field (str, optional): Name of the score field in output DataFrame.
+        assign_field (str, optional): Name of the vitalness field in output DataFrame.
         verbose (bool, optional): Whether to enable verbose logging.
     """
 
@@ -56,8 +56,8 @@ class Nuggetizer(pt.Transformer):
         document_field: Optional[str] = "text",
         answer_field: Optional[str] = "qanswer",
         nugget_field: Optional[str] = "nugget",
-        score_field: Optional[str] = "importance",
-        vital_field: Optional[str] = "vital",
+        importance_field: Optional[str] = "importance",
+        assign_field: Optional[str] = "vital",
         verbose: Optional[bool] = False,
     ):
         assert hasattr(backend, "generate"), "backend must have a generate method"
@@ -85,8 +85,8 @@ class Nuggetizer(pt.Transformer):
         self.document_field = document_field
         self.answer_field = answer_field
         self.nugget_field = nugget_field
-        self.score_field = score_field
-        self.vital_field = vital_field
+        self.importance_field = importance_field
+        self.assign_field = assign_field
         self.verbose = verbose
 
         self.__post_init__()
@@ -147,7 +147,7 @@ class Nuggetizer(pt.Transformer):
             self.query_field,
             f"{self.nugget_field}_id",
             self.nugget_field,
-            self.score_field,
+            self.importance_field,
         }
         if not required_nuggets.issubset(nuggets.columns):
             raise ValueError(
@@ -167,8 +167,8 @@ class Nuggetizer(pt.Transformer):
             self.answer_field,
             f"{self.nugget_field}_id",
             self.nugget_field,
-            self.score_field,
-            self.vital_field,
+            self.importance_field,
+            self.assign_field,
         ]
         for c in list_cols:
             if assigned[c].apply(lambda x: isinstance(x, list)).any():
@@ -184,7 +184,7 @@ class Nuggetizer(pt.Transformer):
                 else 0
             )
 
-        assigned["relevance"] = assigned[self.vital_field].map(to_rel)
+        assigned["relevance"] = assigned[self.assign_field].map(to_rel)
         assigned = assigned.rename(columns={'nugget_id': 'doc_id'})
 
         # 6) produce standard qrels: query_id, doc_id, relevance
@@ -285,6 +285,9 @@ class NuggetCreator(pt.Transformer):
             output = self.nuggetizer.generate(prompt)[0]
             nuggets = self.prompt.answer_extraction(output.text)[: self.max_nuggets]
 
+        if len(nuggets) == 0:
+            logging.warning("No Nuggets Generated")
+
         return [
             {
                 "qid": qid,
@@ -343,7 +346,7 @@ class NuggetScorer(pt.Transformer):
         self.max_nuggets = max_nuggets if max_nuggets else nuggetizer.max_nuggets
         self.query_field = nuggetizer.query_field
         self.nugget_field = nuggetizer.nugget_field
-        self.score_field = nuggetizer.score_field
+        self.importance_field = nuggetizer.importance_field
 
         self.verbose = verbose if verbose is not None else nuggetizer.verbose
 
@@ -355,7 +358,7 @@ class NuggetScorer(pt.Transformer):
             system_message=self.system_message,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
-            output_field=self.score_field,
+            output_field=self.importance_field,
             input_fields=[self.query_field, self.nugget_field],
         )
         self.logger = logging.getLogger(__name__)
@@ -372,7 +375,7 @@ class NuggetScorer(pt.Transformer):
         nugget_ids = [i[f"{self.nugget_field}_id"] for i in inp]
         nuggets = [i[self.nugget_field] for i in inp]
 
-        scores: List[str] = []
+        importance_scores: List[str] = []
 
         for start, end, _ in iter_windows(
             len(nuggets), self.window_size, self.window_size, verbose=self.verbose
@@ -387,8 +390,8 @@ class NuggetScorer(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            scores.extend(self.prompt.answer_extraction(output.text))
-        scores = [self.mapping.get(x.lower(), 0) for x in scores]
+            importance_scores.extend(self.prompt.answer_extraction(output.text))
+        importance_scores = [self.mapping.get(x.lower(), 0) for x in importance_scores]
 
         return [
             {
@@ -396,8 +399,8 @@ class NuggetScorer(pt.Transformer):
                 self.query_field: query,
                 f"{self.nugget_field}_id": idx,
                 self.nugget_field: nugget,
-                self.score_field: score,
-            } for idx, nugget, score in zip(nugget_ids, nuggets, scores)
+                self.importance_field: importance_score,
+            } for idx, nugget, importance_score in zip(nugget_ids, nuggets, importance_scores)
         ]
 
 
@@ -440,9 +443,9 @@ class NuggetAssigner(pt.Transformer):
         self.window_size = window_size if window_size else nuggetizer.assigner_window_size
         self.query_field = nuggetizer.query_field
         self.nugget_field = nuggetizer.nugget_field
-        self.score_field = nuggetizer.score_field
+        self.importance_field = nuggetizer.importance_field
         self.answer_field = nuggetizer.answer_field
-        self.vital_field = nuggetizer.vital_field
+        self.assign_field = nuggetizer.assign_field
 
         self.verbose = verbose if verbose is not None else nuggetizer.verbose
 
@@ -459,7 +462,7 @@ class NuggetAssigner(pt.Transformer):
             system_message=self.system_message,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
-            output_field=self.vital_field,
+            output_field=self.assign_field,
             input_fields=[self.query_field, "context", "nuggets"],
         )
 
@@ -489,9 +492,9 @@ class NuggetAssigner(pt.Transformer):
         qanswer = inp[0][self.answer_field]
         nugget_ids = [i[f"{self.nugget_field}_id"] for i in inp]
         nuggets = [i[self.nugget_field] for i in inp]
-        importance = [i[self.score_field] for i in inp]
+        importance = [i[self.importance_field] for i in inp]
 
-        scores: List[str] = []
+        vital_scores: List[str] = []
 
         for start, end, _ in iter_windows(
             len(nuggets), self.window_size, self.window_size, verbose=self.verbose
@@ -504,8 +507,8 @@ class NuggetAssigner(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            scores.extend(self.prompt.answer_extraction(output))
-        scores = [self.mapping.get(x.lower(), 0) for x in scores]
+            vital_scores.extend(self.prompt.answer_extraction(output))
+        vital_scores = [self.mapping.get(x.lower(), 0) for x in vital_scores]
 
         return [
             {
@@ -514,9 +517,9 @@ class NuggetAssigner(pt.Transformer):
                 self.answer_field: qanswer,
                 f"{self.nugget_field}_id": idx,
                 self.nugget_field: nugget,
-                self.score_field: important,
-                self.vital_field: score,
-            } for idx, nugget, important, score in zip(nugget_ids, nuggets, importance, scores)
+                self.importance_field: important,
+                self.assign_field: vital_score,
+            } for idx, nugget, important, vital_score in zip(nugget_ids, nuggets, importance, vital_scores)
         ]
 
 

@@ -3,6 +3,8 @@ import pandas as pd
 from open_nuggetizer import Nuggetizer
 from open_nuggetizer.nuggetizer import NuggetCreator
 
+from types import SimpleNamespace
+
 
 class DummyBackend:
     def __init__(self):
@@ -10,12 +12,12 @@ class DummyBackend:
 
     def generate(self, prompts):
         # always produce two nuggets in a Python list
-        return ['["alpha", "beta"]']
+        return [SimpleNamespace(text='["alpha", "beta"]')]
 
 
 @pytest.fixture
 def simple_df():
-    return pd.DataFrame([{"qid": "Q1", "query": "test", "document": "d1"}])
+    return pd.DataFrame([{"qid": "Q1", "query": "test", "text": "d1"}])
 
 
 def test_creator_basic(simple_df):
