@@ -37,7 +37,7 @@ class Nuggetizer(pt.Transformer):
         answer_field (str, optional): Name of the answer field in input DataFrame.
         nugget_field (str, optional): Name of the nugget field in output DataFrame.
         importance_field (str, optional): Name of the score field in output DataFrame.
-        assign_field (str, optional): Name of the vitalness field in output DataFrame.
+        assignment_field (str, optional): Name of the assignment field in output DataFrame.
         verbose (bool, optional): Whether to enable verbose logging.
     """
 
@@ -57,7 +57,7 @@ class Nuggetizer(pt.Transformer):
         answer_field: Optional[str] = "qanswer",
         nugget_field: Optional[str] = "nugget",
         importance_field: Optional[str] = "importance",
-        assign_field: Optional[str] = "vital",
+        assignment_field: Optional[str] = "assignment",
         verbose: Optional[bool] = False,
     ):
         assert hasattr(backend, "generate"), "backend must have a generate method"
@@ -86,7 +86,7 @@ class Nuggetizer(pt.Transformer):
         self.answer_field = answer_field
         self.nugget_field = nugget_field
         self.importance_field = importance_field
-        self.assign_field = assign_field
+        self.assignment_field = assignment_field
         self.verbose = verbose
 
         self.__post_init__()
@@ -168,7 +168,7 @@ class Nuggetizer(pt.Transformer):
             f"{self.nugget_field}_id",
             self.nugget_field,
             self.importance_field,
-            self.assign_field,
+            self.assignment_field,
         ]
         for c in list_cols:
             if assigned[c].apply(lambda x: isinstance(x, list)).any():
@@ -184,7 +184,7 @@ class Nuggetizer(pt.Transformer):
                 else 0
             )
 
-        assigned["relevance"] = assigned[self.assign_field].map(to_rel)
+        assigned["relevance"] = assigned[self.assignment_field].map(to_rel)
         assigned = assigned.rename(columns={'nugget_id': 'doc_id'})
 
         # 6) produce standard qrels: query_id, doc_id, relevance
@@ -445,7 +445,7 @@ class NuggetAssigner(pt.Transformer):
         self.nugget_field = nuggetizer.nugget_field
         self.importance_field = nuggetizer.importance_field
         self.answer_field = nuggetizer.answer_field
-        self.assign_field = nuggetizer.assign_field
+        self.assignment_field = nuggetizer.assignment_field
 
         self.verbose = verbose if verbose is not None else nuggetizer.verbose
 
@@ -462,7 +462,7 @@ class NuggetAssigner(pt.Transformer):
             system_message=self.system_message,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
-            output_field=self.assign_field,
+            output_field=self.assignment_field,
             input_fields=[self.query_field, "context", "nuggets"],
         )
 
@@ -494,7 +494,7 @@ class NuggetAssigner(pt.Transformer):
         nuggets = [i[self.nugget_field] for i in inp]
         importance = [i[self.importance_field] for i in inp]
 
-        vital_scores: List[str] = []
+        assignments: List[str] = []
 
         for start, end, _ in iter_windows(
             len(nuggets), self.window_size, self.window_size, verbose=self.verbose
@@ -507,9 +507,9 @@ class NuggetAssigner(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            vital_scores.extend(self.prompt.answer_extraction(output))
-        vital_scores = [self.mapping.get(x.lower(), 0) for x in vital_scores]
-
+            assignments.extend(self.prompt.answer_extraction(output))
+        assignments = [self.mapping.get(x.lower(), 0) for x in assignments]
+    
         return [
             {
                 "qid": qid,
@@ -518,8 +518,8 @@ class NuggetAssigner(pt.Transformer):
                 f"{self.nugget_field}_id": idx,
                 self.nugget_field: nugget,
                 self.importance_field: important,
-                self.assign_field: vital_score,
-            } for idx, nugget, important, vital_score in zip(nugget_ids, nuggets, importance, vital_scores)
+                self.assignment_field: assignment,
+            } for idx, nugget, important, assignment in zip(nugget_ids, nuggets, importance, assignments)
         ]
 
 
