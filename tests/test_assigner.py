@@ -4,7 +4,6 @@ from open_nuggetizer import Nuggetizer
 from open_nuggetizer.nuggetizer import NuggetAssigner
 from open_nuggetizer._types import NuggetAssignMode
 
-
 class DummyBackendGrade2:
     def __init__(self):
         self.model_name_or_path = "dummy"

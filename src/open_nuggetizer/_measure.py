@@ -38,3 +38,5 @@ def measure_factory(attr: str, nuggetizer_provider: 'open_nuggetizer.Nuggetizer'
         if "max_rel" in _SUPPORTED_PARAMS:
             Measure = Measure(max_rel=1)
         return Measure
+    else:
+        raise ValueError(f"Measure {attr} is not supported.")

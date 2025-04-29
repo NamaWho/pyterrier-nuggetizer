@@ -14,7 +14,6 @@ class DummyBackend:
         # always produce two nuggets in a Python list
         return [SimpleNamespace(text='["alpha", "beta"]')]
 
-
 @pytest.fixture
 def simple_df():
     return pd.DataFrame([{"qid": "Q1", "query": "test", "text": "d1"}])
