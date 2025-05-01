@@ -31,7 +31,7 @@ def measure_factory(attr: str, nuggetizer_provider: 'open_nuggetizer.Nuggetizer'
             _nuggetizer_base_measure = M
 
             def runtime_impl(self, nuggets, run):
-                inf_qrels = self._nuggetizer_provider.make_qrels(run, nuggets)
+                assignments = self._nuggetizer_provider.make_qrels(run, nuggets)
                 evaluator = CwlEvaluator(
                     [self], inf_qrels, {(None, 0.0, 1.0): [self]}, verify_gains=False
                 )

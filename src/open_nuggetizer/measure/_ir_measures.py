@@ -1,8 +1,8 @@
 import ir_measures
-from ir_measures.providers.cwl_eval import CwlEvaluator
+from ir_measures.providers.pytrec_eval import PytrecEvalEvaluator
 from open_nuggetizer.measure._provider import WeightedNuggetPrecisionEvaluator
 
-SUPPORTED_MEASURES = {'wNP', 'P'}
+SUPPORTED_MEASURES = {'P'}
 
 
 def measure_factory(attr: str, nuggetizer_provider: str):
