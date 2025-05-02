@@ -1,126 +1,93 @@
-from typing import Iterator
+from typing import Iterator, List, Tuple
 import ir_measures
 from ir_measures import providers, Metric
 from ir_measures.providers.base import Any
 from open_nuggetizer.measure._measures import _AllScore, _VitalScore, _WeightedScore
+from open_nuggetizer.measure._util import NuggetQrelsConverter
 
-class AllScoreEvaluator(providers.Evaluator):
+
+class NuggetScoreEvaluator(providers.Evaluator):
     def __init__(self, measures, qrels, invocations):
         super().__init__(measures, set(qrels.keys()))
         self.qrels = qrels
         self.invocations = invocations
 
-    def iter_calc(self, run) -> Iterator['Metric']:
-        for measure, strict in self.invocations:
-            for qid, nuggets in run.items():
+    def _unweighted(self, nuggets, partial_rel, strict, partial_weight):
+        full_support = [n for n in nuggets if n[1] > partial_rel]
+        partial_support = [n for n in nuggets if 0 < n[1] <= partial_rel]
 
-                if len(nuggets) <= 0:
-                    yield Metric(query_id=qid, measure=measure, value=0)
-                    continue
+        if not len(full_support) > 0:
+            return 0.0
 
-                partial_support = [n for n in nuggets if 0 < n[1] <= 1]
-                full_support = [n for n in nuggets if n[1] > 1]
+        value = len(full_support)
+        if not strict:
+            value += partial_weight * len(partial_support)
 
-                if (not len(full_support) > 0) or (not len(partial_support) and strict):
-                    yield Metric(query_id=qid, measure=measure, value=0)
-                    continue
+        return value / len(nuggets)
 
-                value = len(full_support)
-                if not strict:
-                    value += 0.5 * len(partial_support)
+    def _weighted(self, nuggets, rel, partial_rel, strict, partial_weight):
+        vital_nuggets = [n for n in nuggets if n[2] > rel]
+        okay_nuggets = [n for n in nuggets if 0 < n[2] <= rel]
 
-                value = value / len(nuggets)
+        vital_score = self._unweighted(vital_nuggets, partial_rel, strict, partial_weight)
+        okay_score = self._unweighted(okay_nuggets, partial_rel, strict, partial_weight)
 
-                yield Metric(query_id=qid, measure=measure, value=value)
-
-class VitalScoreEvaluator(providers.Evaluator):
-    def __init__(self, measures, qrels, invocations):
-        super().__init__(measures, set(qrels.keys()))
-        self.qrels = qrels
-        self.invocations = invocations
+        denominator = len(vital_nuggets) + 0.5 * len(okay_nuggets)
+        if denominator == 0:
+            return 0.0
+        return (vital_score + 0.5 * okay_score) / denominator
 
     def iter_calc(self, run) -> Iterator['Metric']:
-        for measure, strict in self.invocations:
-            for qid, nuggets in run.items():
-                # Select nuggets based on their importance (either vital or okay)
-                nuggets = [(nugget_id, attr[1]) for nugget_id, attr in nuggets.items() if attr[0] >= 1]
-
-                if len(nuggets) <= 0:
-                    yield Metric(query_id=qid, measure=measure, value=0)
+        for measure, rel, partial_rel, strict, partial_weight, weighted in self.invocations:
+            for qid, _nuggets in run.items():
+                qrels = self.qrels.get(qid, {})
+                if len(_nuggets) < 1:
                     continue
 
-                partial_support = [n for n in nuggets if 0 < n[1] <= 1]
-                full_support = [n for n in nuggets if n[1] > 1]
+                nuggets = [(n[0], n[1], qrels.get(n[0], 0)) for n in _nuggets]
 
-                if (not len(full_support) > 0) or (not len(partial_support) and strict):
-                    yield Metric(query_id=qid, measure=measure, value=0)
+                if strict:
+                    nuggets = [n for n in nuggets if n[2] >= rel]
+
+                if len(nuggets) < 1:
                     continue
 
-                value = len(full_support)
-                if not strict:
-                    value += 0.5 * len(partial_support)
-
-                value = value / len(nuggets)
-
-                yield Metric(query_id=qid, measure=measure, value=value)
-
-class WeightedScoreEvaluator(providers.Evaluator):
-    def __init__(self, measures, qrels, invocations):
-        super().__init__(measures, set(qrels.keys()))
-        self.qrels = qrels
-        self.invocations = invocations
-
-    def iter_calc(self, run) -> Iterator['Metric']:
-        for measure, strict in self.invocations:
-            for qid, nuggets in run.items():
-
-                if len(nuggets) <= 0:
-                    yield Metric(query_id=qid, measure=measure, value=0)
-                    continue
-                
-                partial_support = [n for n in nuggets if 0 < n[1] <= 1]
-                partial_support_okay = [n for n in partial_support if n[0] == 0]
-                partial_support_vital = [n for n in partial_support if n[0] == 1]
-                
-                full_support = [n for n in nuggets if n[1] > 1]
-                full_support_okay = [n for n in full_support if n[0] == 0]
-                full_support_vital = [n for n in full_support if n[0] == 1]
-
-                if (not len(full_support) > 0) or (not len(partial_support) and strict):
-                    yield Metric(query_id=qid, measure=measure, value=0)
-                    continue
-
-                value = len(full_support_vital) + 0.5 * len(full_support_okay)
-                if not strict:
-                    value += 0.5 (len(partial_support_vital) + 0.5 * len(partial_support_okay))
-
-                vital = len(full_support_vital) + len(partial_support_vital)
-                okay = len(full_support_okay) + len(partial_support_okay)
-
-                value = value / (vital + 0.5 * okay)
-
-                yield Metric(query_id=qid, measure=measure, value=value)
+                if weighted:
+                    yield Metric(query_id=qid,
+                                 measure=measure,
+                                 value=self._weighted(nuggets, rel, partial_rel, strict, partial_weight))
+                else:
+                    yield Metric(query_id=qid,
+                                 measure=measure,
+                                 value=self._unweighted(nuggets, rel, partial_rel, strict, partial_weight))
 
 
 class NuggetEvalProvider(providers.Provider):
     """NuggetEval provider"""
     NAME = "nugget precision"
     SUPPORTED_MEASURES = [
-        _AllScore(strict=Any()),
-        _VitalScore(strict=Any()),
-        _WeightedScore(strict=Any()),
+       _AllScore(strict=Any()),
+       _VitalScore(rel=Any(), strict=Any()),
+       _WeightedScore(rel=Any(), strict=Any(), partial_weight=Any()),
     ]
 
-    def _evaluator(self, measures, qrels) -> providers.Evaluator:
+    def _build_invocations(self, measures) -> List[Tuple[Metric, int, bool, float]]:
         invocations = []
         for measure in measures:
             if measure.NAME in [m.NAME for m in self.SUPPORTED_MEASURES]:
-                invocations.append((measure, measure['strict']))
-            else:
-                raise ValueError(f'Unsupported measure {measure}')
-        qrels = ir_measures.util.QrelsConverter(qrels).as_dict_of_dict()
+                if measure.NAME == _VitalScore.NAME:
+                    invocations.append((measure, measure['rel'], measure['partial_rel'], measure['strict'], 0.5, False))
+                elif measure.NAME == _WeightedScore.NAME:
+                    invocations.append((measure, measure['rel'], measure['partial_rel'], False, measure['partial_weight'], True))
+                elif measure.NAME == _AllScore.NAME:
+                    invocations.append((measure, 0, measure['partial_rel'], measure['strict'], 0.5, False))
+        return invocations
 
-        # TODO: fix this
-        return AllScoreEvaluator(measures, qrels, invocations)
+    def _evaluator(self, measures, qrels) -> providers.Evaluator:
+        qrels = NuggetQrelsConverter(qrels).as_dict_of_dict()
+
+        invocations = self._build_invocations(measures)
+        return NuggetScoreEvaluator(measures, qrels, invocations)
+
 
 providers.register(NuggetEvalProvider())
