@@ -66,9 +66,9 @@ class NuggetEvalProvider(providers.Provider):
     """NuggetEval provider"""
     NAME = "nugget precision"
     SUPPORTED_MEASURES = [
-       _AllScore(strict=Any()),
-       _VitalScore(rel=Any(), strict=Any()),
-       _WeightedScore(rel=Any(), strict=Any(), partial_weight=Any()),
+       _AllScore(partial_rel=Any(), strict=Any()),
+       _VitalScore(rel=Any(), partial_rel=Any(), strict=Any()),
+       _WeightedScore(rel=Any(), partial_rel=Any(), partial_weight=Any()),
     ]
 
     def _build_invocations(self, measures) -> List[Tuple[Metric, int, bool, float]]:

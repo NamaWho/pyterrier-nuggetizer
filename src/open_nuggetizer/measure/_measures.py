@@ -9,7 +9,6 @@ class _AllScore(measures.Measure):
     SUPPORTED_PARAMS = {
         'partial_rel': measures.ParamInfo(dtype=int, default=1, desc='maximum partial value (inclusive)'),
         'strict': measures.ParamInfo(dtype=bool, default=False, desc='Exclude nuggets partially supported in measure'),
-
     }
 
 
