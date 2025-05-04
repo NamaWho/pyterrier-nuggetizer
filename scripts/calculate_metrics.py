@@ -28,5 +28,14 @@ def main():
         max_nuggets=args.max_nuggets
     )
 
+    metrics = [nuggetizer.VitalScore, nuggetizer.AllScore, nuggetizer.WeightedScore]
+
+    for metric in metrics:
+        vals = metric.iter_calc(answers, nuggets)
+        print(f"Metric: {metric.NAME}")
+        for i in vals:
+            print(f"Query ID: {i.query_id}, Value: {i.value}")
+
+
 if __name__ == '__main__':
     main() 
