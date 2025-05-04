@@ -136,62 +136,19 @@ class Nuggetizer(pt.Transformer):
             return measure
         return self.__getattribute__(attr)
 
-    def make_qrels(self, run: pd.DataFrame, nuggets: pd.DataFrame) -> pd.DataFrame:
-        # 1) validate inputs
-        required_run: Set[str] = {self.query_field, self.answer_field}
-        if not required_run.issubset(run.columns):
-            raise ValueError(
-                f"run must contain columns {required_run}, got {list(run.columns)}"
-            )
-        required_nuggets: Set[str] = {
-            self.query_field,
-            f"{self.nugget_field}_id",
-            self.nugget_field,
-            self.importance_field,
-        }
-        if not required_nuggets.issubset(nuggets.columns):
-            raise ValueError(
-                f"nuggets must contain columns {required_nuggets}, got {list(nuggets.columns)}"
-            )
+    def assign_to_run(self, run: pd.DataFrame, qrels: pd.DataFrame) -> pd.DataFrame:
+        """
+        Assign nuggets to a run based on the provided qrels.
 
-        df = pd.merge(
-            run[[self.query_field, self.answer_field]],
-            nuggets,
-            on=self.query_field,
-            how="inner",
-        )
+        Parameters:
+            run (pd.DataFrame): The run DataFrame.
+            qrels (pd.DataFrame): The qrels DataFrame.
 
-        assigned = NuggetAssigner(self).transform(df)
-
-        list_cols = [
-            self.answer_field,
-            f"{self.nugget_field}_id",
-            self.nugget_field,
-            self.importance_field,
-            self.assignment_field,
-        ]
-        for c in list_cols:
-            if assigned[c].apply(lambda x: isinstance(x, list)).any():
-                assigned = assigned.explode(c)
-
-        # 5) map textual vitalness → binary relevance
-        def to_rel(x: str) -> int:
-            xl = str(x).strip().lower()
-            # adjust these tests to match your LLM’s exact outputs
-            return (
-                1
-                if ("vital" in xl or "support" in xl or xl in {"1", "true", "yes"})
-                else 0
-            )
-
-        assigned["relevance"] = assigned[self.assignment_field].map(to_rel)
-        assigned = assigned.rename(columns={'nugget_id': 'doc_id'})
-
-        # 6) produce standard qrels: query_id, doc_id, relevance
-        qrels = assigned.rename(
-            columns={self.query_field: "query_id", f"{self.nugget_field}_id": "doc_id"}
-        )[["query_id", "doc_id", "relevance"]].reset_index(drop=True)
-        return qrels
+        Returns:
+            pd.DataFrame: The updated run DataFrame with nugget assignments.
+        """
+        run = run.merge(qrels, on=["qid", "qid"], how="left")
+        return self.assign(run)
 
 
 class NuggetCreator(pt.Transformer):

@@ -4,58 +4,29 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-from open_nuggetizer.metrics import calculate_nugget_scores, calculate_global_metrics
-
-
-def read_jsonl(file_path: str) -> List[Dict]:
-    """Read JSONL file and return list of dictionaries."""
-    data = []
-    with open(file_path, 'r') as f:
-        for line in f:
-            data.append(json.loads(line))
-    return data
-
-
-def process_records(records: List[Dict]) -> List[Dict]:
-    """Process each record to add metrics."""
-    for record in records:
-        metrics = calculate_nugget_scores(record['qid'], record['nuggets'])
-        record['metrics'] = {
-            'qid': metrics.qid,
-            'strict_vital_score': metrics.strict_vital_score,
-            'vital_score': metrics.vital_score,
-            'strict_weighted_score': metrics.strict_weighted_score,
-            'weighted_score': metrics.weighted_score,
-            'strict_all_score': metrics.strict_all_score,
-            'all_score': metrics.all_score,
-        }
-    return records
+from open_nuggetizer.util import load_nuggets
+from open_nuggetizer import Nuggetizer
+from pyterrier_rag import VLLMBackend
 
 
 def main():
     parser = argparse.ArgumentParser(description='Calculate metrics for nugget assignments')
-    parser.add_argument('--input_file', type=str, help='Path to input JSONL file with assignments')
-    parser.add_argument('--output_file', type=str, help='Path to output JSONL file')
+    parser.add_argument('--input_file', type=str, help='Path to input TSV file with assignments')
+    parser.add_argument('--nugget_file', type=str, help='Path to input JSONL file with assignments')
+    parser.add_argument('--output_file', type=str, help='Path to output TSV file')
+    parser.add_argument('--model_name_or_path', type=str, default='mistralai/Mistral-7B-Instruct-v0.3', help='Model to use for all operations')
+    parser.add_argument('--window_size', type=int, default=10, help='Window size for processing')
+    parser.add_argument('--max_nuggets', type=int, default=30, help='Maximum number of nuggets to extract')
     args = parser.parse_args()
 
-    # Read input data
-    records = read_jsonl(args.input_file)
-    
-    # Calculate per-response metrics
-    processed_records = process_records(records)
-    
-    # Calculate global metrics
-    global_metrics = calculate_global_metrics(records)
-    
-    # Write output with metrics
-    with open(args.output_file, 'w') as f:
-        # Write per-response metrics
-        for record in processed_records:
-            f.write(json.dumps(record['metrics']) + '\n')
-        print(global_metrics)
-        # Write global metrics as final line
-        f.write(json.dumps(global_metrics) + '\n')
-
+    nuggets = load_nuggets(args.nugget_file)
+    answers = load_answers(args.input_file)
+    backend = VLLMBackend(args.model_name_or_path)
+    nuggetizer = Nuggetizer(
+        backend,
+        window_size=args.window_size,
+        max_nuggets=args.max_nuggets
+    )
 
 if __name__ == '__main__':
     main() 
