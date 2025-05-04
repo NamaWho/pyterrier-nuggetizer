@@ -15,7 +15,7 @@ from open_nuggetizer.prompts import (
     ASSIGNER_GRADE_3_PROMPT_STRING,
     make_callable_template,
 )
-from open_nuggetizer._measure import measure_factory
+from open_nuggetizer.measure._ir_measures import measure_factory
 from open_nuggetizer.util import iter_windows, extract_list
 
 
