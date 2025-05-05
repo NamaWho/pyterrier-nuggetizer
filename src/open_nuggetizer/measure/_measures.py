@@ -13,7 +13,7 @@ class _AllScore(measures.Measure):
 
 
 AllScore = _AllScore()
-measures.register(AllScore, ['AllScore'])
+measures.register(AllScore, ['All Score'])
 
 
 class _VitalScore(measures.Measure):
@@ -29,7 +29,7 @@ class _VitalScore(measures.Measure):
 
 
 VitalScore = _VitalScore()
-measures.register(VitalScore, ['VitalScore'])
+measures.register(VitalScore, ['Vital Score'])
 
 
 class _WeightedScore(measures.Measure):
@@ -45,4 +45,4 @@ class _WeightedScore(measures.Measure):
 
 
 WeightedScore = _WeightedScore()
-measures.register(WeightedScore, ['WeightedScore'])
+measures.register(WeightedScore, ['Weighted Score'])
