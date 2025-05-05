@@ -244,6 +244,8 @@ class NuggetCreator(pt.Transformer):
 
         if len(nuggets) == 0:
             logging.warning("No Nuggets Generated")
+        else :
+            logging.info(f"Generated {len(nuggets)} nuggets for query {query}")
 
         return [
             {

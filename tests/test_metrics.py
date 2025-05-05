@@ -54,7 +54,6 @@ def test_precision_metric(dummy_run, dummy_nuggets):
     results = precision.runtime_impl(dummy_nuggets, dummy_run)
     results = list(results)
 
-    print("results: " , results)
     assert isinstance(results, list)
     assert len(results) == 1  
     assert results[0].query_id == "Q1"

@@ -24,8 +24,6 @@ def test_creator_basic(simple_df):
     nug = Nuggetizer(backend, max_nuggets=2, window_size=1)
     creator = NuggetCreator(nug)
     df_out = creator.transform(simple_df)
-    # one row per query
-    print(df_out)
     assert df_out.shape[0] == 2
     row = df_out.iloc[0]
     assert df_out["nugget"].tolist() == ["alpha", "beta"]
