@@ -198,14 +198,15 @@ class NuggetCreator(pt.Transformer):
     def __post_init__(self):
         self.prompt = PromptTransformer(
             instruction=make_callable_template(CREATOR_PROMPT_STRING),
+            raw_instruction=True,
             system_message=self.system_message,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.nugget_field,
             input_fields=[
-                self.query_field,
-                "context_documents",
-                self.nugget_field,
+                "query",
+                "context",
+                "nuggets",
                 "max_nuggets",
             ],
         )
@@ -233,9 +234,9 @@ class NuggetCreator(pt.Transformer):
                 [f"[{i+1}] {doc}" for i, doc in enumerate(current_documents)]
             )
             context = {
-                self.query_field: query,
-                "context_documents": context_string,
-                self.nugget_field: nuggets,
+                "query": query,
+                "context": context_string,
+                "nuggets": nuggets,
                 "max_nuggets": self.max_nuggets,
             }
             prompt = [self.prompt.create_prompt(context)]
@@ -318,7 +319,7 @@ class NuggetScorer(pt.Transformer):
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.importance_field,
-            input_fields=[self.query_field, self.nugget_field],
+            input_fields=["query", "nuggets"],
         )
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO if self.verbose else logging.WARNING)
@@ -344,8 +345,8 @@ class NuggetScorer(pt.Transformer):
                 [f"[{i+1}] {nug}" for i, nug in enumerate(current_nuggets)]
             )
             context = {
-                self.query_field: query,
-                self.nugget_field: context_string,
+                "query": query,
+                "nuggets": context_string,
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
@@ -422,7 +423,7 @@ class NuggetAssigner(pt.Transformer):
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.assignment_field,
-            input_fields=[self.query_field, "context", "nuggets"],
+            input_fields=["query", "context", "nuggets"],
         )
 
         if self.mode == NuggetAssignMode.SUPPORT_GRADE_2:
@@ -460,7 +461,7 @@ class NuggetAssigner(pt.Transformer):
         ):
             current_nuggets = nuggets[start:end]
             context = {
-                self.query_field: query,
+                "query": query,
                 "nuggets": current_nuggets,
                 "context": qanswer,
             }

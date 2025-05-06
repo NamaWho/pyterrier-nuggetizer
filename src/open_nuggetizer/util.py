@@ -15,6 +15,7 @@ def extract_list(text: str) -> List[str]:
         List[str]: The extracted list.
     """
     try:
+        print("--- RAW TEXT: ---\n", text, "\n --- END OF RAW TEXT---")
         # Use regex to find the first occurrence of a list-like structure
         match = re.search(r"\[[^\[\]]+\]", text, re.DOTALL)
         if match:
