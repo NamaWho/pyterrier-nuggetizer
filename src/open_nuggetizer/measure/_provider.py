@@ -39,10 +39,14 @@ class NuggetScoreEvaluator(providers.Evaluator):
 
     def iter_calc(self, run) -> Iterator['Metric']:
         for measure, rel, partial_rel, strict, partial_weight, weighted in self.invocations:
+            print(f"Run items: {run.items()}")
             for qid, _nuggets in run.items():
                 qrels = self.qrels.get(qid, {})
                 if len(_nuggets) < 1:
                     continue
+
+                print(f"Processing query {qid} with nuggets: {_nuggets}")
+                print([f"n: {n}, ({n[0]}, {n[1]})" for n in _nuggets])
 
                 nuggets = [(n[0], n[1], qrels.get(n[0], 0)) for n in _nuggets]
 

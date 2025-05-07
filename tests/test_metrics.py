@@ -1,68 +1,83 @@
 import pytest
 import pandas as pd
-from open_nuggetizer._measure import measure_factory
+from open_nuggetizer.measure._ir_measures import measure_factory
 from open_nuggetizer.nuggetizer import Nuggetizer
-import ir_measures
+from open_nuggetizer.measure._provider import NuggetEvalProvider
+from ir_measures import Metric
 
-class DummyNuggetizer:
+class DummyBackend:
     """
-    Dummy implementation of Nuggetizer for testing metrics.
+    Dummy backend for simulating model inference.
     """
-    def make_qrels(self, run, nuggets):
-        # Simulate qrels creation for testing
-        return pd.DataFrame(
-            {
-                "query_id": run["query_id"],
-                "doc_id": ["D1", "D2"],
-                "relevance": [1, 0],
-            }
-        )
-    
-    def __getattr__(self, attr: str):
-        measure = measure_factory(attr, self)
-        if measure is not None:
-            return measure
-        return self.__getattribute__(attr)
+    def __init__(self):
+        self.model_name_or_path = "dummy_model"
+
+    def generate(self, prompts):
+        # Simulate model output
+        return ['["support", "partial_support", "not_support"]']
 
 @pytest.fixture
 def dummy_run():
+    """
+    Simulated run data for testing metrics.
+    """
     return pd.DataFrame(
         {
-            "query_id": ["Q1", "Q1"],
-            "doc_id": ["D1", "D2"],
-            "score": [1.0, 0.0],
+            "qid": ["Q1", "Q1", "Q2", "Q2"],
+            "query": ["Query1", "Query1", "Query2", "Query2"],
+            "qanswer": ["Answer1", "Answer2", "Answer3", "Answer4"],
         }
     )
 
 @pytest.fixture
-def dummy_nuggets():
+def dummy_qrels():
+    """
+    Simulated qrels data for testing metrics.
+    """
     return pd.DataFrame(
         {
-            "query_id": ["Q1", "Q1"],
-            "nugget_id": ["N1", "N2"],
-            "nugget": ["nugget1", "nugget2"],
-            "importance": [1, 0],
+            "qid": ["Q1", "Q1", "Q1", "Q2", "Q2", "Q2"],
+            "nugget_id": ["N1", "N2", "N3", "N1", "N2", "N3"],
+            "nugget": ["Nugget1", "Nugget2", "Nugget3", "Nugget4", "Nugget5", "Nugget6"],
+            "importance": [1, 0, 1, 0, 1, 0],
         }
     )
 
-def test_precision_metric(dummy_run, dummy_nuggets):
+def test_vital_score_metric(dummy_run, dummy_qrels):
     """
-    Test the Precision (P) metric.
+    Test the VitalScore metric using the updated structure.
     """
-    nuggetizer = DummyNuggetizer()
-    precision = nuggetizer.P
-    results = precision.runtime_impl(dummy_nuggets, dummy_run)
-    results = list(results)
+    backend = DummyBackend()
+    nuggetizer = Nuggetizer(backend=backend)
+    vital_score_metric = measure_factory("VitalScore", nuggetizer)
+    results = list(vital_score_metric.runtime_impl(dummy_qrels, dummy_run))
 
     assert isinstance(results, list)
-    assert len(results) == 1  
-    assert results[0].query_id == "Q1"
-    assert results[1].value == 0.0 
+    assert len(results) == 2  # One result per query
+    for result in results:
+        assert result.query_id in ["Q1", "Q2"]
+        assert 0.0 <= result.value <= 1.0  # VitalScore should be between 0 and 1
+
+def test_weighted_score_metric(dummy_run, dummy_qrels):
+    """
+    Test the WeightedScore metric using the updated structure.
+    """
+    backend = DummyBackend()
+    nuggetizer = Nuggetizer(backend=backend)
+    weighted_score_metric = measure_factory("WeightedScore", nuggetizer)
+    results = list(weighted_score_metric.runtime_impl(dummy_qrels, dummy_run))
+
+    assert isinstance(results, list)
+    assert len(results) == 2  # One result per query
+    for result in results:
+        assert result.query_id.startswith("Q")
+        assert 0.0 <= result.value <= 1.0  # WeightedScore should be between 0 and 1
 
 def test_unsupported_metric():
     """
     Test behavior when an unsupported metric is requested.
     """
-    nuggetizer = DummyNuggetizer()
-    with pytest.raises(ValueError):
+    backend = DummyBackend()
+    nuggetizer = Nuggetizer(backend=backend)
+    with pytest.raises(ValueError, match="Measure UnsupportedMetric is not supported."):
         measure_factory("UnsupportedMetric", nuggetizer)
