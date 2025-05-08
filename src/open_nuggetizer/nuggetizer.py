@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, List, Set, Dict
+from typing import Optional, Iterable, List, Set, Dict, Any
 import logging
 
 import pyterrier as pt
@@ -27,6 +27,7 @@ class Nuggetizer(pt.Transformer):
     Parameters:
         backend (Backend): The LLM backend to use for nugget generation and scoring.
         assigner_mode (NuggetAssignMode): Mode for nugget assignment strategy.
+        conversation_template (Any, optional): Template for conversation with the LLM.
         window_size (int, optional): Size of the document processing window.
         creator_window_size (int, optional): Size of the nugget creation window.
         scorer_window_size (int, optional): Size of the nugget scoring window.
@@ -47,6 +48,7 @@ class Nuggetizer(pt.Transformer):
         # creator_mode: NuggetMode = NuggetMode.ATOMIC,
         # scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
         assigner_mode: NuggetAssignMode = NuggetAssignMode.SUPPORT_GRADE_2,
+        conversation_template: Optional[Any] = None,
         window_size: Optional[int] = None,
         creator_window_size: Optional[int] = 10,
         scorer_window_size: Optional[int] = 10,
@@ -76,6 +78,7 @@ class Nuggetizer(pt.Transformer):
 
         self.backend = backend
         self.assigner_mode = assigner_mode
+        self.conversation_template = conversation_template
         self.window_size = window_size
         self.creator_window_size = creator_window_size
         self.scorer_window_size = scorer_window_size
@@ -187,6 +190,10 @@ class NuggetCreator(pt.Transformer):
         self.window_size = (
             window_size if window_size else nuggetizer.creator_window_size
         )
+        if self.nuggetizer.conversation_template is not None:
+            self.conversation_template = self.nuggetizer.conversation_template
+        else:
+            self.conversation_template = None
         self.query_field = nuggetizer.query_field
         self.document_field = nuggetizer.document_field
         self.nugget_field = nuggetizer.nugget_field
@@ -198,8 +205,8 @@ class NuggetCreator(pt.Transformer):
     def __post_init__(self):
         self.prompt = PromptTransformer(
             instruction=make_callable_template(CREATOR_PROMPT_STRING),
-            raw_instruction=True,
             system_message=self.system_message,
+            conversation_template=self.conversation_template,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.nugget_field,
@@ -303,6 +310,10 @@ class NuggetScorer(pt.Transformer):
 
         self.nuggetizer = nuggetizer
         self.window_size = window_size if window_size else nuggetizer.scorer_window_size
+        if self.nuggetizer.conversation_template is not None:
+            self.conversation_template = self.nuggetizer.conversation_template
+        else:
+            self.conversation_template = None
         self.max_nuggets = max_nuggets if max_nuggets else nuggetizer.max_nuggets
         self.query_field = nuggetizer.query_field
         self.nugget_field = nuggetizer.nugget_field
@@ -316,6 +327,7 @@ class NuggetScorer(pt.Transformer):
         self.prompt = PromptTransformer(
             instruction=make_callable_template(SCORER_PROMPT_STRING),
             system_message=self.system_message,
+            conversation_template=self.conversation_template,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.importance_field,
@@ -401,6 +413,10 @@ class NuggetAssigner(pt.Transformer):
         self.nuggetizer = nuggetizer
         self.mode = mode if mode else nuggetizer.assigner_mode
         self.window_size = window_size if window_size else nuggetizer.assigner_window_size
+        if self.nuggetizer.conversation_template is not None:
+            self.conversation_template = self.nuggetizer.conversation_template
+        else:
+            self.conversation_template = None
         self.query_field = nuggetizer.query_field
         self.nugget_field = nuggetizer.nugget_field
         self.importance_field = nuggetizer.importance_field
@@ -420,6 +436,7 @@ class NuggetAssigner(pt.Transformer):
         self.prompt = PromptTransformer(
             instruction=make_callable_template(instruction),
             system_message=self.system_message,
+            conversation_template=self.conversation_template,
             model_name_or_path=self.nuggetizer.backend.model_name_or_path,
             answer_extraction=extract_list,
             output_field=self.assignment_field,
