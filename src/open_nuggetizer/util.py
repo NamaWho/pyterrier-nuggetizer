@@ -3,6 +3,7 @@ import re
 import pandas as pd
 import ast
 from typing import List, Optional, Iterator, Tuple
+from math import ceil
 
 def extract_list(text: str) -> List[str]:
     """
@@ -50,7 +51,7 @@ def iter_windows(
         raise ValueError("Stride must be greater than 0.")
     if stride > window_size:
         raise ValueError("Stride must be less than or equal to window size.")
-
+    """
     # Compute the last full‐window start
     max_start = ((n - window_size) // stride) * stride
 
@@ -70,9 +71,19 @@ def iter_windows(
                 end_idx = n
             window_len = end_idx - start_idx
 
-            # always include the very first window, otherwise only if it’s not just a tiny remainder
+            # always include the very first window, otherwise only if it’s not just a tiny reminder
             if start_idx == 0 or window_len > stride:
                 yield start_idx, end_idx, window_len
+    """
+    
+    num_windows = ceil((n - window_size) / stride) + 1
+    starts = [i * stride for i in range(num_windows)]
+    starts = [s for s in starts if s < n]
+    
+    for start_idx in tqdm(starts[::-1], desc=desc, disable=not verbose, unit="window"):
+        end_idx = min(start_idx + window_size, n)
+        window_len = end_idx - start_idx
+        yield start_idx, end_idx, window_len
 
 def save_nuggets(nuggets: pd.DataFrame, file: str) -> None:
     """
