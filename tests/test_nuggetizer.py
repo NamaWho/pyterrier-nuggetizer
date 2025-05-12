@@ -23,8 +23,8 @@ class DummyBackend:
 def df_docs():
     return pd.DataFrame(
         [
-            {"qid": "1", "query": "Q1", "text": "DocA"},
-            {"qid": "1", "query": "Q1", "text": "DocB"},
+            {"qid": "1", "query": "Q1", "docno": "D1", "text": "DocA"},
+            {"qid": "1", "query": "Q1", "docno": "D2", "text": "DocB"},
         ]
     )
 
