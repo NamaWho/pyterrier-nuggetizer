@@ -183,7 +183,6 @@ class RAGRunConverter:
         else:
             result = {}
             for answer in self.as_namedtuple_iter():
-                print("ANSWER:", answer)
                 if answer.qid not in result:
                     result[answer.qid] = {}
                 result[answer.qid][answer.nugget_id] = answer.assignment
@@ -195,11 +194,9 @@ class RAGRunConverter:
             yield from self.run
         if t == 'dict_of_dict':
             for qid, docs in self.run.items():
-                print("DOC ITEMS:", docs.items())
                 for nugget_id, qanswer in docs.items():
                     yield ScoredAnswer(qid=qid, nugget_id=nugget_id, qanswer=qanswer)
         if t == 'pd_dataframe':
-            print("RUN:", self.run)
             yield from (ScoredAnswer(qid=answer.qid, query=answer.query, nugget_id=answer.nugget_id, nugget=answer.nugget, qanswer=answer.qanswer, assignment=answer.assignment) for answer in self.run.itertuples())
         if t == 'UNKNOWN':
             raise ValueError(f'unknown run format: {err}')

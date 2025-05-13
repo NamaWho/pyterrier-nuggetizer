@@ -349,7 +349,6 @@ class NuggetScorer(pt.Transformer):
 
         importance_scores: List[str] = []
 
-        print(f"LEN:{len(nuggets)} - {self.window_size}")
         for start, end, _ in iter_windows(
             len(nuggets), self.window_size, self.window_size, verbose=self.verbose
         ):
@@ -359,7 +358,6 @@ class NuggetScorer(pt.Transformer):
                 "nuggets": current_nuggets,
             }
             prompt = [self.prompt.create_prompt(context)]
-            print("PROMPT:\n", prompt)
             output = self.nuggetizer.generate(prompt)[0]
             importance_scores.extend(self.prompt.answer_extraction(output.text))
         importance_scores = [self.mapping.get(x.lower(), 0) for x in importance_scores]
@@ -483,7 +481,7 @@ class NuggetAssigner(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            assignments.extend(self.prompt.answer_extraction(output))
+            assignments.extend(self.prompt.answer_extraction(output.text))
         assignments = [self.mapping.get(x.lower(), 0) for x in assignments]
     
         return [
