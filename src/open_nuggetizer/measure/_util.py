@@ -15,7 +15,7 @@ if False: # this is to allow type-checking for pandas
 
 
 class Qrel(NamedTuple):
-    query_id: str
+    qid: str
     nugget_id: str
     importance: int
     iteration: str = '0'
@@ -31,7 +31,7 @@ class ScoredAnswer(NamedTuple):
 
 class NuggetQrelsConverter:
     def __init__(self, qrels, strict=True):
-        self.qrels = qrels.rename(columns={"qid": "query_id"})
+        self.qrels = qrels
         self._predicted_format = None
         self.strict = strict # setting strict to false prevents missing columns from raising an error for DFs
 
@@ -86,9 +86,9 @@ class NuggetQrelsConverter:
         else:
             result = {}
             for qrel in self.as_namedtuple_iter():
-                if qrel.query_id not in result:
-                    result[qrel.query_id] = {}
-                result[qrel.query_id][qrel.nugget_id] = qrel.importance
+                if qrel.qid not in result:
+                    result[qrel.qid] = {}
+                result[qrel.qid][qrel.nugget_id] = qrel.importance
             return result
 
     def as_namedtuple_iter(self):
@@ -96,14 +96,14 @@ class NuggetQrelsConverter:
         if t == 'namedtuple_iter':
             yield from self.qrels
         if t == 'dict_of_dict':
-            for query_id, docs in self.qrels.items():
+            for qid, docs in self.qrels.items():
                 for nugget_id, importance in docs.items():
-                    yield Qrel(query_id=query_id, nugget_id=nugget_id, importance=importance)
+                    yield Qrel(qid=qid, nugget_id=nugget_id, importance=importance)
         if t == 'pd_dataframe':
             if 'iteration' in self.qrels.columns:
-                yield from (Qrel(qrel.query_id, qrel.nugget_id, qrel.importance, qrel.iteration) for qrel in self.qrels.itertuples())
+                yield from (Qrel(qrel.qid, qrel.nugget_id, qrel.importance, qrel.iteration) for qrel in self.qrels.itertuples())
             else:
-                yield from (Qrel(qrel.query_id, qrel.nugget_id, qrel.importance) for qrel in self.qrels.itertuples())
+                yield from (Qrel(qrel.qid, qrel.nugget_id, qrel.importance) for qrel in self.qrels.itertuples())
         if t == 'UNKNOWN':
             raise ValueError(f'unknown qrels format: {err}')
 
@@ -121,7 +121,7 @@ class NuggetQrelsConverter:
     def as_tmp_file(self):
         with tempfile.NamedTemporaryFile(mode='w+t') as f:
             for qrel in self.as_namedtuple_iter():
-                f.write('{query_id} 0 {nugget_id} {importance}\n'.format(**qrel._asdict()))
+                f.write('{qid} 0 {nugget_id} {importance}\n'.format(**qrel._asdict()))
             f.flush()
             f.seek(0)
             yield f
