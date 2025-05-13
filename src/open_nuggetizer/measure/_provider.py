@@ -65,7 +65,7 @@ class NuggetScoreEvaluator(providers.Evaluator):
 
 class NuggetEvalProvider(providers.Provider):
     """NuggetEval provider"""
-    NAME = "nugget precision"
+    NAME = "nugget_eval"
     SUPPORTED_MEASURES = [
        _AllScore(partial_rel=Any(), strict=Any()),
        _VitalScore(rel=Any(), partial_rel=Any(), strict=Any()),
