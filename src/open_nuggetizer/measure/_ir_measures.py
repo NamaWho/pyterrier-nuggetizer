@@ -22,6 +22,7 @@ def measure_factory(attr: str, nuggetizer_provider: str):
 
             def runtime_impl(self, qrels, run):
                 assignments = self._nuggetizer_provider.assign_to_run(run, qrels)
+                assignments = assignments.rename(columns={'qid': 'query_id'})
                 evaluator = NuggetEvalProvider().evaluator([self], qrels)
                 assignments = RAGRunConverter(assignments).as_dict_of_dict()
                 return evaluator.iter_calc(assignments)

@@ -22,7 +22,7 @@ class Qrel(NamedTuple):
 
 
 class ScoredAnswer(NamedTuple):
-    qid: str
+    query_id: str
     query: str
     nugget_id: str
     nugget: str
@@ -183,9 +183,9 @@ class RAGRunConverter:
         else:
             result = {}
             for answer in self.as_namedtuple_iter():
-                if answer.qid not in result:
-                    result[answer.qid] = {}
-                result[answer.qid][answer.nugget_id] = answer.assignment
+                if answer.query_id not in result:
+                    result[answer.query_id] = {}
+                result[answer.query_id][answer.nugget_id] = answer.assignment
             return result
 
     def as_namedtuple_iter(self):
@@ -193,11 +193,11 @@ class RAGRunConverter:
         if t == 'namedtuple_iter':
             yield from self.run
         if t == 'dict_of_dict':
-            for qid, docs in self.run.items():
+            for query_id, docs in self.run.items():
                 for nugget_id, qanswer in docs.items():
-                    yield ScoredAnswer(qid=qid, nugget_id=nugget_id, qanswer=qanswer)
+                    yield ScoredAnswer(query_id=query_id, nugget_id=nugget_id, qanswer=qanswer)
         if t == 'pd_dataframe':
-            yield from (ScoredAnswer(qid=answer.qid, query=answer.query, nugget_id=answer.nugget_id, nugget=answer.nugget, qanswer=answer.qanswer, assignment=answer.assignment) for answer in self.run.itertuples())
+            yield from (ScoredAnswer(query_id=answer.query_id, query=answer.query, nugget_id=answer.nugget_id, nugget=answer.nugget, qanswer=answer.qanswer, assignment=answer.assignment) for answer in self.run.itertuples())
         if t == 'UNKNOWN':
             raise ValueError(f'unknown run format: {err}')
 
@@ -214,9 +214,9 @@ class RAGRunConverter:
         with tempfile.NamedTemporaryFile(mode='w+t') as f:
             ranks = {}
             for answer in self.as_namedtuple_iter():
-                key = answer.qid
+                key = answer.query_id
                 rank = ranks.setdefault(key, 0)
-                f.write('{qid} Q0 {answer} run\n'.format(**answer._asdict(), rank=rank))
+                f.write('{query_id} Q0 {answer} run\n'.format(**answer._asdict(), rank=rank))
                 ranks[key] += 1
             f.flush()
             f.seek(0)
