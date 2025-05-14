@@ -37,7 +37,7 @@ class NuggetScoreEvaluator(providers.Evaluator):
             return 0.0
         return (vital_score + 0.5 * okay_score) / denominator
 
-    def iter_calc(self, run) -> Iterator['Metric']:
+    def _iter_calc(self, run) -> Iterator['Metric']:
         for measure, rel, partial_rel, strict, partial_weight, weighted in self.invocations:
 
             for qid, _nuggets in run.items():
@@ -65,7 +65,7 @@ class NuggetScoreEvaluator(providers.Evaluator):
 
 class NuggetEvalProvider(providers.Provider):
     """NuggetEval provider"""
-    NAME = "nugget precision"
+    NAME = "nugget_eval"
     SUPPORTED_MEASURES = [
        _AllScore(partial_rel=Any(), strict=Any()),
        _VitalScore(rel=Any(), partial_rel=Any(), strict=Any()),

@@ -28,5 +28,4 @@ def measure_factory(attr: str, nuggetizer_provider: str):
                 return evaluator.iter_calc(assignments)
         Measure = _RuntimeMeasure()
         return Measure
-    else:
-        raise ValueError(f"Measure {attr} is not supported.")
+    return None
