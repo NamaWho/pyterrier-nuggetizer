@@ -4,9 +4,9 @@ import logging
 import pyterrier as pt
 import pyterrier_alpha as pta
 from pyterrier_rag.prompt import PromptTransformer
-from pyterrier_rag.backend import Backend
 import pandas as pd
 
+from open_nuggetizer.measure._ir_measures import measure_factory
 from open_nuggetizer._types import NuggetAssignMode
 from open_nuggetizer.prompts import (
     CREATOR_PROMPT_STRING,
@@ -15,9 +15,10 @@ from open_nuggetizer.prompts import (
     ASSIGNER_GRADE_3_PROMPT_STRING,
     make_callable_template,
 )
-from open_nuggetizer.measure._ir_measures import measure_factory
+# from open_nuggetizer.measure._ir_measures import measure_factory
+from open_nuggetizer.measure._measures import _AllScore, _VitalScore, _WeightedScore
 from open_nuggetizer.util import iter_windows, extract_list
-
+# import pdb
 
 class Nuggetizer(pt.Transformer):
     """
@@ -44,7 +45,7 @@ class Nuggetizer(pt.Transformer):
 
     def __init__(
         self,
-        backend: Backend,
+        backend,        
         # creator_mode: NuggetMode = NuggetMode.ATOMIC,
         # scorer_mode: NuggetScoreMode = NuggetScoreMode.VITAL_OKAY,
         assigner_mode: NuggetAssignMode = NuggetAssignMode.SUPPORT_GRADE_2,
@@ -62,6 +63,8 @@ class Nuggetizer(pt.Transformer):
         assignment_field: Optional[str] = "assignment",
         verbose: Optional[bool] = False,
     ):
+        from pyterrier_rag.prompt import PromptTransformer
+        from pyterrier_rag.backend import Backend   # lazy import to avoid circular dependency
         assert hasattr(backend, "generate"), "backend must have a generate method"
         assert window_size is None or isinstance(
             window_size, int
@@ -134,10 +137,19 @@ class Nuggetizer(pt.Transformer):
             return self.score(inp)
 
     def __getattr__(self, attr: str):
-        measure = measure_factory(attr, self)
-        if measure is not None:
+        # measure = measure_factory(attr, self)
+        # if measure is not None:
+        #     return measure
+        # return self.__getattribute__(attr)
+        SUPPORTED_MEASURES = {
+            "VitalScore": _VitalScore,
+            "WeightedScore": _WeightedScore,
+            "AllScore": _AllScore,
+        }
+        if attr in SUPPORTED_MEASURES:
+            measure = SUPPORTED_MEASURES[attr]
             return measure
-        return self.__getattribute__(attr)
+
 
     def assign_to_run(self, run: pd.DataFrame, qrels: pd.DataFrame) -> pd.DataFrame:
         """

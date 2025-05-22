@@ -1,7 +1,10 @@
 from ir_measures import measures
 
+class _BaseNuggetMeasure(measures.Measure):
+    def _iter_calc(self, qrels, run):
+        raise NotImplementedError("Delegate to NuggetEvalProvider only")
 
-class _AllScore(measures.Measure):
+class _AllScore(_BaseNuggetMeasure):
     __name__ = 'AllScore'
     NAME = __name__
     PRETTY_NAME = 'All Score'
@@ -16,7 +19,7 @@ AllScore = _AllScore()
 measures.register(AllScore)
 
 
-class _VitalScore(measures.Measure):
+class _VitalScore(_BaseNuggetMeasure):
     __name__ = 'VitalScore'
     NAME = __name__
     PRETTY_NAME = 'Vital Score'
@@ -27,12 +30,11 @@ class _VitalScore(measures.Measure):
         'strict': measures.ParamInfo(dtype=bool, default=True, desc='Exclude nuggets partially supported in measure'),
     }
 
-
 VitalScore = _VitalScore()
 measures.register(VitalScore)
 
 
-class _WeightedScore(measures.Measure):
+class _WeightedScore(_BaseNuggetMeasure):
     __name__ = 'WeightedScore'
     NAME = __name__
     PRETTY_NAME = 'Weighted Score'
@@ -46,3 +48,12 @@ class _WeightedScore(measures.Measure):
 
 WeightedScore = _WeightedScore()
 measures.register(WeightedScore)
+
+
+# debug printing measures registry
+def print_measures_registry():
+    print("Registered measures:")
+    for measure in measures.registry:
+        print(measure)
+    print("Registered measures with details:")
+print_measures_registry()

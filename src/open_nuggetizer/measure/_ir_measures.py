@@ -5,7 +5,6 @@ from open_nuggetizer.measure._util import RAGRunConverter
 
 SUPPORTED_MEASURES = {'VitalScore', 'WeightedScore', 'AllScore'}
 
-
 def measure_factory(attr: str, nuggetizer_provider: str):
     if attr in SUPPORTED_MEASURES:
         M = getattr(open_nuggetizer.measure._measures, attr)
@@ -26,6 +25,7 @@ def measure_factory(attr: str, nuggetizer_provider: str):
                 evaluator = NuggetEvalProvider().evaluator([self], qrels)
                 assignments = RAGRunConverter(assignments).as_dict_of_dict()
                 return evaluator.iter_calc(assignments)
+            
         Measure = _RuntimeMeasure()
         return Measure
     return None

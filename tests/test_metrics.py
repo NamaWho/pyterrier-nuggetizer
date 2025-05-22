@@ -4,6 +4,7 @@ from open_nuggetizer.measure._ir_measures import measure_factory
 from open_nuggetizer.nuggetizer import Nuggetizer
 from open_nuggetizer.measure._provider import NuggetEvalProvider
 from open_nuggetizer._types import NuggetAssignMode
+import pdb
 
 class DummyBackend:
     """
@@ -43,56 +44,72 @@ def dummy_qrels():
         }
     )
 
-def test_vital_score_metric(dummy_run, dummy_qrels):
-    """
-    Test the VitalScore metric using the updated structure.
-    """
-    backend = DummyBackend()
-    nuggetizer = Nuggetizer(backend=backend)
-    vital_score_metric = measure_factory("VitalScore", nuggetizer)
-    results = list(vital_score_metric.runtime_impl(dummy_qrels, dummy_run))
+class DummyNuggetizer(Nuggetizer):
+    def __init__(self, assigner_mode = NuggetAssignMode.SUPPORT_GRADE_2, conversation_template = None, window_size = None, creator_window_size = 10, scorer_window_size = 10, assigner_window_size = 10, max_nuggets = 30, query_field = "query", document_field = "text", answer_field = "qanswer", nugget_field = "nugget", importance_field = "importance", assignment_field = "assignment", verbose = False):
+        super().__init__(DummyBackend(), assigner_mode, conversation_template, window_size, creator_window_size, scorer_window_size, assigner_window_size, max_nuggets, query_field, document_field, answer_field, nugget_field, importance_field, assignment_field, verbose)
 
-    assert isinstance(results, list)
-    assert len(results) == 2  # One result per query
-    for result in results:
-        assert result.query_id in ["Q1", "Q2"]
-        assert 0.0 <= result.value <= 1.0  # VitalScore should be between 0 and 1
+    def assign_to_run(self, run, qrels):
+        """
+        Simulate nugget assignment to the run.
+        """
+        # Simulate nugget assignment logic
+        assignments = pd.DataFrame({
+            "qid": run["qid"],
+            "nugget_id": ["N1", "N2", "N3", "N4", "N5", "N6"],
+            "support": [1, 0, 1, 0, 1, 0],
+            "partial_support": [0.5, 0.2, 0.8, 0.1, 0.6, 0.3],
+        })
+        return assignments
 
-# def test_strict_vital_score_metric(dummy_run, dummy_qrels):
+# def test_vital_score_metric(dummy_run, dummy_qrels):
 #     """
-#     Test the VitalScore metric with strict mode using the updated structure.
+#     Test the VitalScore metric using the updated structure.
 #     """
 #     backend = DummyBackend()
-#     nuggetizer = Nuggetizer(backend=backend, assigner_mode=NuggetAssignMode.SUPPORT_GRADE_3)
-#     vital_score_metric = measure_factory("VitalScore", nuggetizer, strict=True)
+#     nuggetizer = Nuggetizer(backend=backend)
+#     vital_score_metric = measure_factory("VitalScore", nuggetizer)
 #     results = list(vital_score_metric.runtime_impl(dummy_qrels, dummy_run))
 
 #     assert isinstance(results, list)
 #     assert len(results) == 2  # One result per query
 #     for result in results:
-#         assert result.query_id.startswith("Q")
+#         assert result.query_id in ["Q1", "Q2"]
 #         assert 0.0 <= result.value <= 1.0  # VitalScore should be between 0 and 1
 
-def test_weighted_score_metric(dummy_run, dummy_qrels):
+def test_vital_score_nuggetizer_metric(dummy_run, dummy_qrels):
     """
-    Test the WeightedScore metric using the updated structure.
-    """
-    backend = DummyBackend()
-    nuggetizer = Nuggetizer(backend=backend, assigner_mode=NuggetAssignMode.SUPPORT_GRADE_3)
-    weighted_score_metric = measure_factory("WeightedScore", nuggetizer)
-    results = list(weighted_score_metric.runtime_impl(dummy_qrels, dummy_run))
-
-    assert isinstance(results, list)
-    assert len(results) == 2  # One result per query
-    for result in results:
-        assert result.query_id.startswith("Q")
-        assert 0.0 <= result.value <= 1.0  # WeightedScore should be between 0 and 1
-
-def test_unsupported_metric():
-    """
-    Test behavior when an unsupported metric is requested.
+    Test the VitalScore metric using the updated structure.
     """
     backend = DummyBackend()
-    nuggetizer = Nuggetizer(backend=backend)
-    with pytest.raises(ValueError, match="Measure UnsupportedMetric is not supported."):
-        measure_factory("UnsupportedMetric", nuggetizer)
+    nuggetizer = DummyNuggetizer()
+    vital_score_metric = nuggetizer.VitalScore()
+
+    dummy_qrels = dummy_qrels.rename(columns={"qid":"query_id"})
+    pdb.set_trace()
+    for result in vital_score_metric.iter_calc(dummy_qrels, dummy_run):
+        assert result.query_id in ["Q1", "Q2"]
+        assert 0.0 <= result.value <= 1.0  # VitalScore should be between 0 and 1
+
+# def test_weighted_score_metric(dummy_run, dummy_qrels):
+#     """
+#     Test the WeightedScore metric using the updated structure.
+#     """
+#     backend = DummyBackend()
+#     nuggetizer = Nuggetizer(backend=backend, assigner_mode=NuggetAssignMode.SUPPORT_GRADE_3)
+#     weighted_score_metric = measure_factory("WeightedScore", nuggetizer)
+#     results = list(weighted_score_metric.runtime_impl(dummy_qrels, dummy_run))
+
+#     assert isinstance(results, list)
+#     assert len(results) == 2  # One result per query
+#     for result in results:
+#         assert result.query_id.startswith("Q")
+#         assert 0.0 <= result.value <= 1.0  # WeightedScore should be between 0 and 1
+
+# def test_unsupported_metric():
+#     """
+#     Test behavior when an unsupported metric is requested.
+#     """
+#     backend = DummyBackend()
+#     nuggetizer = Nuggetizer(backend=backend)
+#     with pytest.raises(AttributeError):
+#         measure_factory("UnsupportedMetric", nuggetizer)

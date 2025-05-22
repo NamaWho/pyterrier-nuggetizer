@@ -1,5 +1,4 @@
 from typing import Iterator, List, Tuple
-import ir_measures
 from ir_measures import providers, Metric
 from ir_measures.providers.base import Any
 from open_nuggetizer.measure._measures import _AllScore, _VitalScore, _WeightedScore
@@ -65,17 +64,26 @@ class NuggetScoreEvaluator(providers.Evaluator):
 
 class NuggetEvalProvider(providers.Provider):
     """NuggetEval provider"""
-    NAME = "nugget_eval"
+    NAME = "nugget_provider"
     SUPPORTED_MEASURES = [
        _AllScore(partial_rel=Any(), strict=Any()),
        _VitalScore(rel=Any(), partial_rel=Any(), strict=Any()),
        _WeightedScore(rel=Any(), partial_rel=Any(), partial_weight=Any()),
     ]
 
+    def supports(self, measure) -> bool:
+        print(f"Measure: {measure.NAME}")
+        print(f"Supported measures: {self.SUPPORTED_MEASURES}")
+        measure.validate_params()
+        for supported_measure in self.SUPPORTED_MEASURES:
+            if measure.NAME == supported_measure.NAME:
+                return True
+        return False
+
     def _build_invocations(self, measures) -> List[Tuple[Metric, int, bool, float]]:
         invocations = []
         for measure in measures:
-            if measure.NAME in [m.NAME for m in self.SUPPORTED_MEASURES]:
+            if measure.NAME in SUPPORTED_MEASURES:
                 if measure.NAME == _VitalScore.NAME:
                     invocations.append((measure, measure['rel'], measure['partial_rel'], measure['strict'], 0.5, False))
                 elif measure.NAME == _WeightedScore.NAME:
@@ -89,5 +97,9 @@ class NuggetEvalProvider(providers.Provider):
         invocations = self._build_invocations(measures)
         return NuggetScoreEvaluator(measures, qrels, invocations)
 
-
+print("Registering NuggetEvalProvider")
 providers.register(NuggetEvalProvider())
+
+print("Registered providers:")
+for provider in providers.registry:
+    print(provider)
