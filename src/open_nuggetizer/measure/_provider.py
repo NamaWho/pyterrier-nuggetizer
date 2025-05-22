@@ -98,7 +98,7 @@ class NuggetEvalProvider(providers.Provider):
         return NuggetScoreEvaluator(measures, qrels, invocations)
 
 print("Registering NuggetEvalProvider")
-from _ir_measures import DefaultPipeline
+from ir_measures import DefaultPipeline
 DefaultPipeline.append(NuggetEvalProvider())
 
 
