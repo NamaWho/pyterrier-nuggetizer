@@ -278,8 +278,8 @@ class NuggetCreator(pt.Transformer):
                 "max_nuggets": self.max_nuggets,
             }
             prompt = [self.prompt.create_prompt(context)]
-            output = self.nuggetizer.generate(prompt)[0]
-            nuggets = self.prompt.answer_extraction(output)[: self.max_nuggets]
+            output = self.nuggetizer.generate(prompt)[0].text
+            nuggets = self.prompt.answer_extraction(output)[:self.max_nuggets]
 
         if len(nuggets) == 0:
             logging.warning("No Nuggets Generated")
@@ -389,7 +389,7 @@ class NuggetScorer(pt.Transformer):
                 "nuggets": current_nuggets,
             }
             prompt = [self.prompt.create_prompt(context)]
-            output = self.nuggetizer.generate(prompt)[0]
+            output = self.nuggetizer.generate(prompt)[0].text
             importance_scores.extend(self.prompt.answer_extraction(output))
         importance_scores = [self.mapping.get(x.lower(), 0) for x in importance_scores]
 

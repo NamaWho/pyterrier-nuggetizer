@@ -15,14 +15,12 @@ def extract_list(text: str) -> List[str]:
     Returns:
         List[str]: The extracted list.
     """
-    try:
-        # Use regex to find the first occurrence of a list-like structure
-        match = re.search(r"\[[^\[\]]+\]", text, re.DOTALL)
-        if match:
-            return ast.literal_eval(match.group(0))
-        return []
-    except Exception as _:
-        raise ValueError("No valid Python list found in response.")
+    # Use regex to find the first occurrence of a list-like structure
+    match = re.search(r"\[[^\[\]]+\]", text, re.DOTALL)
+    if match:
+        return ast.literal_eval(match.group(0))
+    return []
+    
 
 
 def iter_windows(
