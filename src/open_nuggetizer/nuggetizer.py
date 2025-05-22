@@ -145,11 +145,12 @@ class Nuggetizer(pt.Transformer):
     def _iter_assign_to_run(self, run: pd.DataFrame, qrels: Iterable) -> Iterable:
         qrels_df = []
         for qid, nuggets in qrels.items():
-            for nugget_id, importance in nuggets.items():
+            for nugget_id, (nugget, importance) in nuggets.items():
                 qrels_df.append(
                     {
                         "qid": qid,
                         "nugget_id": nugget_id,
+                        "nugget": nugget,
                         "importance": importance,
                     }
                 )

@@ -17,6 +17,7 @@ if False: # this is to allow type-checking for pandas
 class Qrel(NamedTuple):
     qid: str
     nugget_id: str
+    nugget: str
     importance: int
     iteration: str = '0'
 
@@ -88,7 +89,7 @@ class NuggetQrelsConverter:
             for qrel in self.as_namedtuple_iter():
                 if qrel.qid not in result:
                     result[qrel.qid] = {}
-                result[qrel.qid][qrel.nugget_id] = qrel.importance
+                result[qrel.qid][qrel.nugget_id] = (qrel.nugget, qrel.importance)
             return result
 
     def as_namedtuple_iter(self):
@@ -97,13 +98,13 @@ class NuggetQrelsConverter:
             yield from self.qrels
         if t == 'dict_of_dict':
             for qid, docs in self.qrels.items():
-                for nugget_id, importance in docs.items():
-                    yield Qrel(qid=qid, nugget_id=nugget_id, importance=importance)
+                for nugget_id, (nugget, importance) in docs.items():
+                    yield Qrel(qid=qid, nugget_id=nugget_id, nugget=nugget, importance=importance)
         if t == 'pd_dataframe':
             if 'iteration' in self.qrels.columns:
-                yield from (Qrel(qrel.qid, qrel.nugget_id, qrel.importance, qrel.iteration) for qrel in self.qrels.itertuples())
+                yield from (Qrel(qrel.qid, qrel.nugget_id, qrel.nugget, qrel.importance, qrel.iteration) for qrel in self.qrels.itertuples())
             else:
-                yield from (Qrel(qrel.qid, qrel.nugget_id, qrel.importance) for qrel in self.qrels.itertuples())
+                yield from (Qrel(qrel.qid, qrel.nugget_id, qrel.nugget, qrel.importance) for qrel in self.qrels.itertuples())
         if t == 'UNKNOWN':
             raise ValueError(f'unknown qrels format: {err}')
 
