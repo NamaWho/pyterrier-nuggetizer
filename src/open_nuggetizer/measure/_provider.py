@@ -99,7 +99,7 @@ class NuggetEvalProvider(providers.Provider):
 
 print("Registering NuggetEvalProvider")
 from ir_measures import DefaultPipeline
-DefaultPipeline.append(NuggetEvalProvider())
+DefaultPipeline.providers.append(NuggetEvalProvider())
 
 
 providers.register(NuggetEvalProvider())
