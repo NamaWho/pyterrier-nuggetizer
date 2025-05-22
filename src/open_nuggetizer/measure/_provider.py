@@ -83,7 +83,7 @@ class NuggetEvalProvider(providers.Provider):
     def _build_invocations(self, measures) -> List[Tuple[Metric, int, bool, float]]:
         invocations = []
         for measure in measures:
-            if measure.NAME in SUPPORTED_MEASURES:
+            if self.supports(measure):
                 if measure.NAME == _VitalScore.NAME:
                     invocations.append((measure, measure['rel'], measure['partial_rel'], measure['strict'], 0.5, False))
                 elif measure.NAME == _WeightedScore.NAME:
