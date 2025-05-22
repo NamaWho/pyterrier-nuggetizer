@@ -38,7 +38,8 @@ class NuggetScoreEvaluator(providers.Evaluator):
         return (vital_score + 0.5 * okay_score) / denominator
 
     def iter_calc(self, run) -> Iterator['Metric']:
-        run = self.nuggetizer_instance._iter_assign_to_run(run, qrels)
+        run = self.nuggetizer_instance._iter_assign_to_run(run, self.qrels)
+        run = run.rename(columns={'qid': 'query_id'})
         run = RAGRunConverter(run).as_dict_of_dict()
         for measure, rel, partial_rel, strict, partial_weight, weighted in self.invocations:
 

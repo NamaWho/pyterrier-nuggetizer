@@ -44,22 +44,22 @@ def dummy_qrels():
         }
     )
 
-class DummyNuggetizer(Nuggetizer):
-    def __init__(self, assigner_mode = NuggetAssignMode.SUPPORT_GRADE_2, conversation_template = None, window_size = None, creator_window_size = 10, scorer_window_size = 10, assigner_window_size = 10, max_nuggets = 30, query_field = "query", document_field = "text", answer_field = "qanswer", nugget_field = "nugget", importance_field = "importance", assignment_field = "assignment", verbose = False):
-        super().__init__(DummyBackend(), assigner_mode, conversation_template, window_size, creator_window_size, scorer_window_size, assigner_window_size, max_nuggets, query_field, document_field, answer_field, nugget_field, importance_field, assignment_field, verbose)
+# class DummyNuggetizer(Nuggetizer):
+#     def __init__(self, assigner_mode = NuggetAssignMode.SUPPORT_GRADE_2, conversation_template = None, window_size = None, creator_window_size = 10, scorer_window_size = 10, assigner_window_size = 10, max_nuggets = 30, query_field = "query", document_field = "text", answer_field = "qanswer", nugget_field = "nugget", importance_field = "importance", assignment_field = "assignment", verbose = False):
+#         super().__init__(DummyBackend(), assigner_mode, conversation_template, window_size, creator_window_size, scorer_window_size, assigner_window_size, max_nuggets, query_field, document_field, answer_field, nugget_field, importance_field, assignment_field, verbose)
 
-    def assign_to_run(self, run, qrels):
-        """
-        Simulate nugget assignment to the run.
-        """
-        # Simulate nugget assignment logic
-        assignments = pd.DataFrame({
-            "qid": run["qid"],
-            "nugget_id": ["N1", "N2", "N3", "N4", "N5", "N6"],
-            "support": [1, 0, 1, 0, 1, 0],
-            "partial_support": [0.5, 0.2, 0.8, 0.1, 0.6, 0.3],
-        })
-        return assignments
+#     def assign_to_run(self, run, qrels):
+#         """
+#         Simulate nugget assignment to the run.
+#         """
+#         # Simulate nugget assignment logic
+#         assignments = pd.DataFrame({
+#             "qid": run["qid"],
+#             "nugget_id": ["N1", "N2", "N3", "N4", "N5", "N6"],
+#             "support": [1, 0, 1, 0, 1, 0],
+#             "partial_support": [0.5, 0.2, 0.8, 0.1, 0.6, 0.3],
+#         })
+#         return assignments
 
 # def test_vital_score_metric(dummy_run, dummy_qrels):
 #     """
@@ -81,11 +81,11 @@ def test_vital_score_nuggetizer_metric(dummy_run, dummy_qrels):
     Test the VitalScore metric using the updated structure.
     """
     backend = DummyBackend()
-    nuggetizer = DummyNuggetizer()
+    nuggetizer = Nuggetizer(backend)
     vital_score_metric = nuggetizer.VitalScore()
 
-    dummy_qrels = dummy_qrels.rename(columns={"qid":"query_id"})
-    pdb.set_trace()
+    #dummy_qrels = dummy_qrels.rename(columns={"qid":"query_id"})
+    #pdb.set_trace()
     for result in vital_score_metric.iter_calc(dummy_qrels, dummy_run):
         assert result.query_id in ["Q1", "Q2"]
         assert 0.0 <= result.value <= 1.0  # VitalScore should be between 0 and 1

@@ -155,7 +155,7 @@ class Nuggetizer(pt.Transformer):
                     }
                 )
         qrels_df = pd.DataFrame(qrels_df)
-        run = run.merge(qrels, on=["qid", "qid"], how="left")
+        run = run.merge(qrels_df, on=["qid", "qid"], how="left")
         return self.assign(run)
               
     def assign_to_run(self, run: pd.DataFrame, qrels: pd.DataFrame) -> pd.DataFrame:
@@ -267,7 +267,7 @@ class NuggetCreator(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            nuggets = self.prompt.answer_extraction(output.text)[: self.max_nuggets]
+            nuggets = self.prompt.answer_extraction(output)[: self.max_nuggets]
 
         if len(nuggets) == 0:
             logging.warning("No Nuggets Generated")
@@ -378,7 +378,7 @@ class NuggetScorer(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            importance_scores.extend(self.prompt.answer_extraction(output.text))
+            importance_scores.extend(self.prompt.answer_extraction(output))
         importance_scores = [self.mapping.get(x.lower(), 0) for x in importance_scores]
 
         return [
@@ -500,7 +500,7 @@ class NuggetAssigner(pt.Transformer):
             }
             prompt = [self.prompt.create_prompt(context)]
             output = self.nuggetizer.generate(prompt)[0]
-            assignments.extend(self.prompt.answer_extraction(output.text))
+            assignments.extend(self.prompt.answer_extraction(output))
         assignments = [self.mapping.get(x.lower(), 0) for x in assignments]
     
         return [
