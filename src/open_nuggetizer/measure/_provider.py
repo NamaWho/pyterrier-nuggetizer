@@ -42,7 +42,6 @@ class NuggetScoreEvaluator(providers.Evaluator):
         run = run.rename(columns={'qid': 'query_id'})
         run = RAGRunConverter(run).as_dict_of_dict()
         for measure, rel, partial_rel, strict, partial_weight, weighted in self.invocations:
-
             for qid, _nuggets in run.items():
                 qrels = self.qrels.get(qid, {})
                 if len(_nuggets) < 1:
@@ -51,7 +50,7 @@ class NuggetScoreEvaluator(providers.Evaluator):
                 nuggets = [(nugget_id, support, qrels.get(nugget_id, 0)) for nugget_id, support in _nuggets.items()]
 
                 if strict:
-                    nuggets = [n for n in nuggets if n[2] >= rel]
+                    nuggets = [n for n in nuggets if n[2][1] >= rel]
 
                 if len(nuggets) < 1:
                     continue

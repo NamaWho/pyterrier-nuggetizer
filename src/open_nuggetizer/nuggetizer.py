@@ -95,6 +95,8 @@ class Nuggetizer(pt.Transformer):
         self.assignment_field = assignment_field
         self.verbose = verbose
 
+        self.provider = None
+
         self.__post_init__()
 
     def __post_init__(self):
@@ -105,6 +107,15 @@ class Nuggetizer(pt.Transformer):
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO if self.verbose else logging.WARNING)
+
+    def make_provider(self):
+        if self.provider:
+            return
+        from open_nuggetizer.measure._provider import NuggetEvalProvider
+        self.provider = NuggetEvalProvider(self)
+
+        from ir_measures import DefaultPipeline
+        DefaultPipeline.providers.append(self.provider)
 
     def __repr__(self):
         return f"Nuggetizer(backend={self.backend}, assigner_mode={self.assigner_mode}, window_size={self.window_size}, max_nuggets={self.max_nuggets})"
@@ -219,6 +230,7 @@ class NuggetCreator(pt.Transformer):
         self.max_nuggets = nuggetizer.max_nuggets
         self.verbose = verbose if verbose is not None else nuggetizer.verbose
 
+
         self.__post_init__()
 
     def __post_init__(self):
@@ -271,7 +283,7 @@ class NuggetCreator(pt.Transformer):
 
         if len(nuggets) == 0:
             logging.warning("No Nuggets Generated")
-        else :
+        else:
             logging.info(f"Generated {len(nuggets)} nuggets for query {query}")
 
         return [
