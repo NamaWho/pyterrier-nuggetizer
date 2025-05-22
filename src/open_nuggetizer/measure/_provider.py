@@ -2,12 +2,13 @@ from typing import Iterator, List, Tuple
 from ir_measures import providers, Metric
 from ir_measures.providers.base import Any
 from open_nuggetizer.measure._measures import _AllScore, _VitalScore, _WeightedScore
-from open_nuggetizer.measure._util import NuggetQrelsConverter
+from open_nuggetizer.measure._util import NuggetQrelsConverter, RAGRunConverter
 
 
 class NuggetScoreEvaluator(providers.Evaluator):
-    def __init__(self, measures, qrels, invocations):
+    def __init__(self, nuggetizer_instance, measures, qrels, invocations):
         super().__init__(measures, set(qrels.keys()))
+        self.nuggetizer_instance = nuggetizer_instance
         self.qrels = qrels
         self.invocations = invocations
 
@@ -37,6 +38,8 @@ class NuggetScoreEvaluator(providers.Evaluator):
         return (vital_score + 0.5 * okay_score) / denominator
 
     def iter_calc(self, run) -> Iterator['Metric']:
+        run = self.nuggetizer_instance._iter_assign_to_run(run, qrels)
+        run = RAGRunConverter(run).as_dict_of_dict()
         for measure, rel, partial_rel, strict, partial_weight, weighted in self.invocations:
 
             for qid, _nuggets in run.items():
@@ -71,6 +74,10 @@ class NuggetEvalProvider(providers.Provider):
        _WeightedScore(rel=Any(), partial_rel=Any(), partial_weight=Any()),
     ]
 
+    def __init__(self, nuggetizer_instance):
+        super().__init__()
+        self.nuggetizer_instance = nuggetizer_instance
+
     def supports(self, measure) -> bool:
         print(f"Measure: {measure.NAME}")
         print(f"Supported measures: {self.SUPPORTED_MEASURES}")
@@ -95,15 +102,4 @@ class NuggetEvalProvider(providers.Provider):
     def _evaluator(self, measures, qrels) -> providers.Evaluator:
         qrels = NuggetQrelsConverter(qrels).as_dict_of_dict()
         invocations = self._build_invocations(measures)
-        return NuggetScoreEvaluator(measures, qrels, invocations)
-
-print("Registering NuggetEvalProvider")
-from ir_measures import DefaultPipeline
-DefaultPipeline.providers.append(NuggetEvalProvider())
-
-
-providers.register(NuggetEvalProvider())
-
-print("Registered providers:")
-for provider in providers.registry:
-    print(provider)
+        return NuggetScoreEvaluator(self.nuggetizer_instance, measures, qrels, invocations)

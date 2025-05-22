@@ -137,20 +137,26 @@ class Nuggetizer(pt.Transformer):
             return self.score(inp)
 
     def __getattr__(self, attr: str):
-        # measure = measure_factory(attr, self)
-        # if measure is not None:
-        #     return measure
-        # return self.__getattribute__(attr)
-        SUPPORTED_MEASURES = {
-            "VitalScore": _VitalScore,
-            "WeightedScore": _WeightedScore,
-            "AllScore": _AllScore,
-        }
-        if attr in SUPPORTED_MEASURES:
-            measure = SUPPORTED_MEASURES[attr]
+        measure = measure_factory(attr, self)
+        if measure is not None:
             return measure
+        return self.__getattribute__(attr)
 
-
+    def _iter_assign_to_run(self, run: pd.DataFrame, qrels: Iterable) -> Iterable:
+        qrels_df = []
+        for qid, nuggets in qrels.items():
+            for nugget_id, importance in nuggets.items():
+                qrels_df.append(
+                    {
+                        "qid": qid,
+                        "nugget_id": nugget_id,
+                        "importance": importance,
+                    }
+                )
+        qrels_df = pd.DataFrame(qrels_df)
+        run = run.merge(qrels, on=["qid", "qid"], how="left")
+        return self.assign(run)
+              
     def assign_to_run(self, run: pd.DataFrame, qrels: pd.DataFrame) -> pd.DataFrame:
         """
         Assign nuggets to a run based on the provided qrels.
