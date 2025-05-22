@@ -511,7 +511,7 @@ class NuggetAssigner(pt.Transformer):
                 "context": qanswer,
             }
             prompt = [self.prompt.create_prompt(context)]
-            output = self.nuggetizer.generate(prompt)[0]
+            output = self.nuggetizer.generate(prompt)[0].text
             assignments.extend(self.prompt.answer_extraction(output))
         assignments = [self.mapping.get(x.lower(), 0) for x in assignments]
     
