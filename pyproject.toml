@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open_nuggetizer"
+description = "PyTerrier Integration of Nuggetization components"
+requires-python = ">=3.10"
+readme = "README.md"
+classifiers = [
+  "Programming Language :: Python",
+  "Operating System :: OS Independent",
+  "Topic :: Text Processing",
+  "License :: OSI Approved :: MIT License",
+]
+dynamic = ["version", "dependencies"]
+
+[tool.setuptools.dynamic]
+version = {attr = "open_nuggetizer.__version__"}
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+where = ["src"]   
+exclude = ["tests"]
+
+[project.urls]
+Repository = "https://github.com/NamaWho/open-nuggetizer"
+"Bug Tracker" = "https://github.com/NamaWho/open-nuggetizer"
+
+[tool.ruff]
+line-length = 120
+exclude = ["tests"]
