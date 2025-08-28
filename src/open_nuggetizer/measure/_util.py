@@ -82,6 +82,7 @@ class NuggetQrelsConverter:
 
     def as_dict_of_dict(self):
         t, err = self.predict_type()
+        print(t, err)
         if t == 'dict_of_dict':
             return self.qrels
         else:
