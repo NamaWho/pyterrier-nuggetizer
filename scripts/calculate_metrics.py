@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-from open_nuggetizer.util import load_nuggets
-from open_nuggetizer import Nuggetizer
+from pyterrier_nuggetizer.util import load_nuggets
+from pyterrier_nuggetizer import Nuggetizer
 from pyterrier_rag import VLLMBackend
 
 

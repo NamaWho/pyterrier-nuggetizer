@@ -6,19 +6,17 @@ import pyterrier_alpha as pta
 from pyterrier_rag.prompt import PromptTransformer
 import pandas as pd
 
-from open_nuggetizer.measure._ir_measures import measure_factory
-from open_nuggetizer._types import NuggetAssignMode
-from open_nuggetizer.prompts import (
+from pyterrier_nuggetizer.measure._ir_measures import measure_factory
+from pyterrier_nuggetizer._types import NuggetAssignMode
+from pyterrier_nuggetizer.prompts import (
     CREATOR_PROMPT_STRING,
     SCORER_PROMPT_STRING,
     ASSIGNER_GRADE_2_PROMPT_STRING,
     ASSIGNER_GRADE_3_PROMPT_STRING,
     make_callable_template,
 )
-# from open_nuggetizer.measure._ir_measures import measure_factory
-from open_nuggetizer.measure._measures import _AllScore, _VitalScore, _WeightedScore
-from open_nuggetizer.util import iter_windows, extract_list
-# import pdb
+from pyterrier_nuggetizer.measure._measures import _AllScore, _VitalScore, _WeightedScore
+from pyterrier_nuggetizer.util import iter_windows, extract_list
 
 class Nuggetizer(pt.Transformer):
     """
@@ -111,7 +109,7 @@ class Nuggetizer(pt.Transformer):
     def make_provider(self):
         if self.provider:
             return
-        from open_nuggetizer.measure._provider import NuggetEvalProvider
+        from pyterrier_nuggetizer.measure._provider import NuggetEvalProvider
         self.provider = NuggetEvalProvider(self)
 
         from ir_measures import DefaultPipeline

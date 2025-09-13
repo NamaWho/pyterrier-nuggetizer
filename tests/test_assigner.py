@@ -1,8 +1,8 @@
 import pytest
 import pandas as pd
-from open_nuggetizer import Nuggetizer
-from open_nuggetizer.nuggetizer import NuggetAssigner
-from open_nuggetizer._types import NuggetAssignMode
+from pyterrier_nuggetizer import Nuggetizer
+from pyterrier_nuggetizer.nuggetizer import NuggetAssigner
+from pyterrier_nuggetizer._types import NuggetAssignMode
 
 class DummyBackendGrade2:
     def __init__(self):

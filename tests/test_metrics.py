@@ -1,9 +1,9 @@
 import pytest
 import pandas as pd
-from open_nuggetizer.measure._ir_measures import measure_factory
-from open_nuggetizer.nuggetizer import Nuggetizer
-from open_nuggetizer.measure._provider import NuggetEvalProvider
-from open_nuggetizer._types import NuggetAssignMode
+from pyterrier_nuggetizer.measure._ir_measures import measure_factory
+from pyterrier_nuggetizer.nuggetizer import Nuggetizer
+from pyterrier_nuggetizer.measure._provider import NuggetEvalProvider
+from pyterrier_nuggetizer._types import NuggetAssignMode
 import pdb
 
 class DummyBackend:

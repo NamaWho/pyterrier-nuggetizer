@@ -1,7 +1,7 @@
 import ir_measures
-from open_nuggetizer.measure._provider import NuggetEvalProvider
-import open_nuggetizer
-from open_nuggetizer.measure._util import RAGRunConverter
+from pyterrier_nuggetizer.measure._provider import NuggetEvalProvider
+import pyterrier_nuggetizer
+from pyterrier_nuggetizer.measure._util import RAGRunConverter
 
 SUPPORTED_MEASURES = {'VitalScore', 'WeightedScore', 'AllScore'}
 

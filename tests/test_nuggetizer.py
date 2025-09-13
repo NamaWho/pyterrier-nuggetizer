@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
-from open_nuggetizer import Nuggetizer
-from open_nuggetizer._types import NuggetAssignMode
+from pyterrier_nuggetizer import Nuggetizer
+from pyterrier_nuggetizer._types import NuggetAssignMode
 
 from types import SimpleNamespace
 

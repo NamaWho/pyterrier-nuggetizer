@@ -1,6 +1,6 @@
-from open_nuggetizer.nuggetizer import Nuggetizer
-from open_nuggetizer import measure as measure
-from open_nuggetizer import prompts
+from pyterrier_nuggetizer.nuggetizer import Nuggetizer
+from pyterrier_nuggetizer import measure as measure
+from pyterrier_nuggetizer import prompts
 
 __version__ = '0.0.1'
 

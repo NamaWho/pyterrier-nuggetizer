@@ -1,8 +1,8 @@
 from typing import Iterator, List, Tuple
 from ir_measures import providers, Metric
 from ir_measures.providers.base import Any
-from open_nuggetizer.measure._measures import _AllScore, _VitalScore, _WeightedScore
-from open_nuggetizer.measure._util import NuggetQrelsConverter, RAGRunConverter
+from pyterrier_nuggetizer.measure._measures import _AllScore, _VitalScore, _WeightedScore
+from pyterrier_nuggetizer.measure._util import NuggetQrelsConverter, RAGRunConverter
 
 
 class NuggetScoreEvaluator(providers.Evaluator):

@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
-from open_nuggetizer import Nuggetizer
-from open_nuggetizer.nuggetizer import NuggetScorer
+from pyterrier_nuggetizer import Nuggetizer
+from pyterrier_nuggetizer.nuggetizer import NuggetScorer
 
 from types import SimpleNamespace
 

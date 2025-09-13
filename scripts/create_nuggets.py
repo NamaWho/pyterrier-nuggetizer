@@ -2,8 +2,8 @@ import logging
 import argparse
 
 import pyterrier as pt
-from open_nuggetizer import Nuggetizer
-from open_nuggetizer.util import save_nuggets
+from pyterrier_nuggetizer import Nuggetizer
+from pyterrier_nuggetizer.util import save_nuggets
 from pyterrier_rag import VLLMBackend
 
 
