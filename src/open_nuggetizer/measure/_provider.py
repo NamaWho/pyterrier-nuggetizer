@@ -15,19 +15,18 @@ class NuggetScoreEvaluator(providers.Evaluator):
     def _unweighted(self, nuggets, partial_rel, strict, partial_weight):
         full_support = [n for n in nuggets if n[1] > partial_rel]
         partial_support = [n for n in nuggets if 0 < n[1] <= partial_rel]
-
         if not len(full_support) > 0:
             return 0.0
 
         value = len(full_support)
         if not strict:
             value += partial_weight * len(partial_support)
-
+            
         return value / len(nuggets)
 
     def _weighted(self, nuggets, rel, partial_rel, strict, partial_weight):
-        vital_nuggets = [n for n in nuggets if n[2] > rel]
-        okay_nuggets = [n for n in nuggets if 0 < n[2] <= rel]
+        vital_nuggets = [n for n in nuggets if n[1] > rel]
+        okay_nuggets = [n for n in nuggets if 0 < n[1] <= rel]
 
         vital_score = self._unweighted(vital_nuggets, partial_rel, strict, partial_weight)
         okay_score = self._unweighted(okay_nuggets, partial_rel, strict, partial_weight)
@@ -79,8 +78,6 @@ class NuggetEvalProvider(providers.Provider):
         self.nuggetizer_instance = nuggetizer_instance
 
     def supports(self, measure) -> bool:
-        print(f"Measure: {measure.NAME}")
-        print(f"Supported measures: {self.SUPPORTED_MEASURES}")
         measure.validate_params()
         for supported_measure in self.SUPPORTED_MEASURES:
             if measure.NAME == supported_measure.NAME:

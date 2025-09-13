@@ -473,7 +473,7 @@ class NuggetAssigner(pt.Transformer):
 
         if self.mode == NuggetAssignMode.SUPPORT_GRADE_2:
             self.mapping = {
-                "support": 1,
+                "support": 2,
                 "not_support": 0,
             }
         else:
@@ -514,7 +514,7 @@ class NuggetAssigner(pt.Transformer):
             output = self.nuggetizer.generate(prompt)[0].text
             assignments.extend(self.prompt.answer_extraction(output))
         assignments = [self.mapping.get(x.lower(), 0) for x in assignments]
-    
+        print("Assignments:", assignments)
         return [
             {
                 "qid": qid,
