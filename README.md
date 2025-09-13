@@ -1,75 +1,96 @@
-**OpenNuggetizer: An Open-Source Framework for Evaluating Retrieval-Augmented Generation (RAG) Systems**
+# PyTerrier Nuggetizer
 
-OpenNuggetizer is an open-source tool designed to assess the factual accuracy of Retrieval-Augmented Generation (RAG) systems by generating, scoring, and assigning information nuggets to RAG outputs. Inspired by the original [Nuggetizer framework](https://arxiv.org/pdf/2411.09607), OpenNuggetizer exclusively utilizes open-source inference models, ensuring accessibility and adaptability for the research community.
-
-**Key Features:**
-
-- **Information Nugget Generation:** Automatically extract concise information units ("nuggets") from textual data to facilitate detailed evaluation.
-
-- **Nugget Scoring and Assignment:** Assess and align these nuggets with RAG-generated responses to measure factual consistency and relevance.
-
-- **Open-Source Integration:** Leverage open-source Large Language Models (LLMs) and Natural Language Processing (NLP) tools to ensure transparency and reproducibility.
+**PyTerrier Nuggetizer** is an open-source library for creating and scoring *nuggets* (atomic, verifiable information units) used in **retrieval-augmented generation (RAG)** and **evaluation**.  
+It is inspired by the original [Nuggetizer framework](https://arxiv.org/pdf/2411.09607) but provides simpler APIs and direct integration with PyTerrier.
 
 ---
 
-**Getting Started:**
+## ✨ Features
 
-This guide explains how to set up and run OpenNuggetizer using Docker in a secure and interactive container environment.
+- Automatic nugget creation from LLM-generated responses  
+- Nugget scoring and assignment with multiple modes (`SUPPORT_GRADE_3`, etc.)  
+- Integration with PyTerrier and IR datasets (e.g., MS MARCO, TREC RAG 2024)  
+- Compatible with **OpenAI API-like backends** and HuggingFace models (e.g., LLaMA, Qwen)  
+- Easily extensible pipelines for RAG evaluation  
 
-### 1. Clone the Repository
+---
+
+## 🚀 Installation
 
 ```bash
-git clone <REPO_URL>
-cd <REPO_NAME>
+git clone https://github.com/NamaWho/pyterrier-nuggetizer.git
+cd pyterrier-nuggetizer
+pip install -e .
 ```
 
-### 2. Build the Docker Image
+## 🔧 Quickstart
+### 1. Define the backend
 
-Build the Docker container with the required dependencies:
+```python
+from pyterrier_rag.backend import OpenAIBackend
+from transformers import AutoTokenizer
+import os
 
-```bash
-docker build -t nuggetizer .
+model_name = "llama-3.3-70b-instruct"
+tokenizer = AutoTokenizer.from_pretrained("casperhansen/llama-3.3-70b-instruct-awq")
+
+backend = OpenAIBackend(
+    model_name,
+    api_key=<YOUR_API_KEY>,
+    base_url=<<YOUR_BASE_URL>,
+    generation_args={"temperature": 0.6, "max_tokens": 256},
+    verbose=True,
+    parallel=64,
+)
 ```
 
-### 3. Run the Docker Container
+### 2. Initialize the Nuggetizer
+```python
+from pyterrier_nuggetizer.nuggetizer import Nuggetizer
+from pyterrier_nuggetizer._types import NuggetAssignMode
+from fastchat.model import get_conversation_template
 
-Run the container in interactive mode with GPU support, mounting the `data` directory:
+conv_template = get_conversation_template("meta-llama-3.1-sp")
 
-```bash
-docker run -it --gpus all --name nuggetizer -v "$(pwd)/data:/app/data" -d nuggetizer /bin/bash
+nuggetizer = Nuggetizer(
+    backend=backend,
+    conversation_template=conv_template,
+    verbose=True,
+    assigner_mode=NuggetAssignMode.SUPPORT_GRADE_3
+)
 ```
 
-Alternatively, if you want to specify a particular GPU device:
+### 3. Create and score nuggets
+```python
+# Nugget creation
+nuggets = nuggetizer.create(df_responses)   # df_responses = DataFrame with [qid, query, docno, text]
 
-```bash
-docker run -it --gpus "device=0" --name nuggetizer -v "$(pwd)/data:/app/data" -d nuggetizer /bin/bash
+# Nugget scoring
+scored_nuggets = nuggetizer.score(nuggets)
+
+# Save results
+scored_nuggets.to_csv("scored_nuggets.csv", index=False)
 ```
 
-### 4. Access the Running Container
+### 4. Use in a PyTerrier RAG pipeline
+```python
+import pyterrier as pt
+from pyterrier_rag.prompt import Concatenator, PromptTransformer
+from pyterrier_rag.readers import Reader
+from jinja2 import Template
 
-Open an interactive shell inside the container:
+prompt = PromptTransformer(
+    instruction=lambda **kwargs: Template(
+        "Use the context to answer:\n Context: {{ context }}\n Question: {{ query }}\n Answer:"
+    ).render(**kwargs),
+    system_message="You are a helpful assistant.",
+    conversation_template=conv_template,
+    input_fields=["qcontext", "query"],
+)
 
-```bash
-docker exec -it nuggetizer bash
-```
-
-### 5. Start the Model Server
-
-Within the container, start the `vllm` server with your model and API key:
-
-```bash
-vllm serve <MODEL_NAME> --dtype auto --api-key=<API_KEY> --port 8080
-```
-
-### 6. Generate Nuggets
-
-After the model server is running, execute the nugget generation script:
-
-```bash
-PYTHONPATH=. python3 scripts/create_nuggets.py \
---input_file data/retrieval_results/<INPUT_FILE> \
---output_file data/nuggets/<OUTPUT_FILE> \
---log_level 2
+reader = Reader(backend, prompt)
+rag_pipeline = (retrieval_stage >> Concatenator() >> reader)
+results = rag_pipeline(df_queries)
 ```
 
 ---
